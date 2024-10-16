@@ -5,13 +5,10 @@ import { useCallback } from "react";
 import css from "./page.module.css";
 
 import {
-  between,
   center,
   connectAcrossRays,
   connectVerts,
-  generateTris,
   isClockwise,
-  normalize,
   raycast,
   transformToZ0,
   type Vector3
@@ -56,8 +53,8 @@ if (pS.length > pL.length) {
   pL = p1;
 }
 
-const rays = raycast(pS, pL);
-const connections = connectVerts(pS, pL, rays);
+const rays = raycast(pS);
+const connections = connectVerts(pL, pS, rays);
 
 const connections2: typeof connections = JSON.parse(JSON.stringify(connections));
 connectAcrossRays(connections2);
@@ -154,7 +151,7 @@ function drawConnections(
   color: string
 ) {
   for (let i = 0; i < matrix.length; i++) {
-    for (let j = 0; j < matrix[i].length; j++) {
+    for (let j = 0; j < matrix[0].length; j++) {
       if (!matrix[i][j]) continue;
 
       const [x1, y1] = pL[i];

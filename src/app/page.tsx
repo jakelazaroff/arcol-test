@@ -68,7 +68,7 @@ export default function Home() {
           <Fragment key={i}>
             <Box position={point} />
             <Text scale={[1, 1, 1]} color="black" position={[point[0], point[1] - 2, point[2]]}>
-              {i + 4}
+              {i}
             </Text>
           </Fragment>
         ))}
@@ -89,7 +89,7 @@ export default function Home() {
             itemSize={1}
           />
         </bufferGeometry>
-        <meshStandardMaterial color="gray" flatShading />
+        <meshStandardMaterial color="pink" flatShading side={THREE.DoubleSide} />
       </mesh>
 
       <group>

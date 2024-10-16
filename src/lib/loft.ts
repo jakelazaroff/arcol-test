@@ -41,12 +41,10 @@ export function loft(
   // 7) Scale pL to completely encompass pS
 
   // 8) Generate rays from the origin that extend through the edge midpoints of pS
-  const rays = raycast(pS, pL);
+  const rays = raycast(pS);
 
   // 9) Connect vertices on pL to the vertices on pS in the sections created by the rays
-  console.log(JSON.stringify({ pS, pL, rays }));
-  const connections = connectVerts(pS, pL, rays);
-  console.log(connections.join("\n"));
+  const connections = connectVerts(pL, pS, rays);
 
   // 10) Find appropriate connections for unconnected vertices in pL if they exist
 
@@ -56,45 +54,9 @@ export function loft(
   connectAcrossRays(connections);
 
   // 13) Generate a connected list of triangles
+  const indices = generateTris(pL, pS, connections);
 
-  console.log(connections.join("\n"));
-  let row = 0,
-    col = connections[0].findIndex(edge => edge);
-  if (col === -1) throw new Error("No starting point");
-
-  const tris: [v1: number, v2: number, v3: number][] = [];
-  const pSoffset = pL.length;
-
-  for (let i = 0; i < pL.length + pS.length; i++) {
-    const i1 = row,
-      v1 = pL[row];
-    const i2 = pSoffset + col,
-      v2 = pS[col];
-    let i3: number, v3: Vector3;
-
-    const nextRow = (row + 1) % pL.length,
-      nextCol = (col + 1) % pS.length;
-    console.log(
-      row,
-      col,
-      connections[nextRow]?.[col] ? "DOWN" : connections[row][nextCol] ? "RIGHT" : "BREAK"
-    );
-    if (connections[nextRow]?.[col]) {
-      row = nextRow;
-      i3 = row;
-      v3 = pL[row];
-    } else if (connections[row][nextCol]) {
-      col = nextCol;
-      i3 = col;
-      v3 = pS[col];
-    } else throw new Error("Broken path");
-
-    const tri: (typeof tris)[0] = [i1, i2, i3];
-    if (!isClockwise([v1, v2, v3])) tri.reverse();
-    tris.push(tri);
-  }
-
-  return { vertices, indices: new Uint16Array(tris.flat()) };
+  return { vertices, indices };
 }
 
 export function transformToZ0(path: Vector3[]): void {
@@ -165,7 +127,7 @@ export function isClockwise(path: Vector3[]) {
   return sum > 0;
 }
 
-export function raycast(pS: Vector3[], pL: Vector3[]) {
+export function raycast(pS: Vector3[]) {
   const rays: number[] = [];
 
   // iterate through each vertex
@@ -182,7 +144,7 @@ export function raycast(pS: Vector3[], pL: Vector3[]) {
   return rays;
 }
 
-export function connectVerts(pS: Vector3[], pL: Vector3[], rays: number[]) {
+export function connectVerts(pL: Vector3[], pS: Vector3[], rays: number[]) {
   // create the adjacency matrix
   const matrix = new Array<number>(pL.length)
     .fill(0)
@@ -198,7 +160,6 @@ export function connectVerts(pS: Vector3[], pL: Vector3[], rays: number[]) {
     for (let row = 0; row < pL.length; row++) {
       // get the angle of that point
       const angle = normalize(Math.atan2(pL[row][1], pL[row][0]));
-      if (row === 4) console.log(row, col, start, angle, end, between(start, angle, end));
 
       // if the angle is between the two rays, set the corresponding adjacency matrix cell to `true`
       if (between(start, angle, end)) matrix[row][col] = true;
@@ -235,30 +196,61 @@ export function connectAcrossRays(matrix: boolean[][]) {
     if (above + below + left + right === 2) continue;
 
     // get the next connected cell
-    const [nextRow, nextCol] = connections[++i % connections.length];
+    const [_nextRow, nextCol] = connections[++i % connections.length];
     // mark a connection in the next column
     matrix[row][nextCol] = true;
-
-    console.log(`pS: ${col}, ${nextCol}; pL: ${row}, ${nextRow}`);
   }
 }
 
 export function generateTris(pL: Vector3[], pS: Vector3[], matrix: boolean[][]) {
-  const connections: [row: number, col: number][] = [];
-  const rows = matrix.length,
-    cols = matrix[0].length;
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      if (matrix[row][col]) connections.push([row, col]);
-    }
+  // find the first connection in the first row
+  let row = 0,
+    col = matrix[0].findIndex(edge => edge);
+  if (col === -1) throw new Error("No starting point");
+
+  // each tri consists of three indices pointing to an array of pL's vertices concatenated with pS's
+  const tris: [v1: number, v2: number, v3: number][] = [];
+
+  // pL's vertices are before pS's, so to index a pS vertex we need to add pL's length as an offset
+  const pSoffset = pL.length;
+
+  // the number of tris will be equal to the length of pL + pS
+  for (let i = 0; i < pL.length + pS.length; i++) {
+    // the first two indices of each tri are the row and column in the connection matrix
+    const i1 = row,
+      v1 = pL[row];
+    const i2 = pSoffset + col,
+      v2 = pS[col];
+    let i3: number, v3: Vector3;
+
+    // find next row and column, wrapping around to 0 if exceeding the number of vertices
+    const nextRow = (row + 1) % pL.length,
+      nextCol = (col + 1) % pS.length;
+
+    // either the box in the next row or next column will be filled
+    // the direction of travel corresponds to the final vertex: rows correspond to pL, while cols correspond to pS
+    if (matrix[nextRow]?.[col]) {
+      // if the connection is in the next row, the final vertex is the next vertex in pL
+      row = nextRow;
+      i3 = row;
+      v3 = pL[row];
+    } else if (matrix[row][nextCol]) {
+      // if the connection is in the next col, the final vertex is the next vertex in pS
+      col = nextCol;
+      i3 = pSoffset + col;
+      v3 = pS[col];
+    } else throw new Error("Broken path");
+
+    // create a tri out of the indices
+    const tri: (typeof tris)[0] = [i1, i2, i3];
+
+    // ensure the tri is clockwise
+    if (!isClockwise([v1, v2, v3])) tri.reverse();
+
+    tris.push(tri);
   }
 
-  for (let i = 0; i < connections.length; i++) {
-    const [l1, s1] = connections[i],
-      [l2, s2] = connections[(i + 1) % connections.length];
-
-    const tri: number[] = [];
-  }
+  return new Uint16Array(tris.flat());
 }
 
 const TWO_PI = Math.PI * 2;
