@@ -1,88 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Stats, OrbitControls, Text } from "@react-three/drei";
+import { useMemo, useRef, useState } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { Stats, OrbitControls } from "@react-three/drei";
+
+import Plane from "~/components/Plane";
 import { loft } from "~/lib/loft";
 
 import * as THREE from "three";
-
-type ThreeTarget = {
-  setPointerCapture(pointerId: number): void;
-  releasePointerCapture(pointerId: number): void;
-} | null;
-
-interface PointProps {
-  position: THREE.Vector3Tuple;
-  color?: string | number;
-  onPointerDown(): void;
-  onPointerMove(vector: THREE.Vector3): void;
-  onPointerUp(): void;
-}
-
-const raycaster = new THREE.Raycaster();
-
-function Point(props: PointProps) {
-  const { color = "blue", onPointerDown, onPointerMove, onPointerUp, ...rest } = props;
-  const { camera } = useThree();
-
-  return (
-    <mesh
-      {...rest}
-      onPointerDown={e => {
-        e.stopPropagation();
-
-        const target = e.target as ThreeTarget;
-        target?.setPointerCapture(e.pointerId);
-
-        onPointerDown();
-      }}
-      onPointerMove={e => {
-        const canvas = e.nativeEvent.target as HTMLCanvasElement;
-        const { width, height } = canvas.getBoundingClientRect();
-
-        const x = (e.x / width) * 2 - 1,
-          y = -(e.y / height) * 2 + 1;
-
-        raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
-
-        // define the plane
-        const normal = new THREE.Vector3(0, 1, 0);
-        const p = new THREE.Vector3(0, rest.position[1], 0);
-
-        // get the ray direction
-        const dir = raycaster.ray.direction;
-
-        const denominator = dir.dot(normal);
-
-        // ensure the ray isn't parallel to the plane
-        if (Math.abs(denominator) <= Number.EPSILON) return;
-
-        // calculate t (the distance along the ray to the intersection point)
-        const t = p.sub(raycaster.ray.origin).dot(normal) / denominator;
-
-        // calculate the intersection point
-        const intersection = new THREE.Vector3()
-          .copy(raycaster.ray.origin)
-          .add(dir.multiplyScalar(t));
-
-        onPointerMove(intersection);
-      }}
-      onPointerUp={e => {
-        e.stopPropagation();
-
-        const target = e.target as ThreeTarget;
-        target?.releasePointerCapture(e.pointerId);
-
-        onPointerUp();
-      }}
-      onPointerCancel={() => {}}
-    >
-      <sphereGeometry args={[0.5, 32, 16]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
-  );
-}
 
 function Cap(props: { path: THREE.Vector3Tuple[]; color?: string | number }) {
   const { path, color = "pink" } = props;
@@ -105,16 +30,16 @@ export default function Home() {
 
 function Scene() {
   const [floor, setFloor] = useState<THREE.Vector3Tuple[]>([
-    [-6.6, -5, 5.6],
-    [-17.9, -5, 1.0],
-    [-7.2, -5, -5.0],
-    [-6.1, -5, -17.2],
-    [2.9, -5, -8.9],
-    [14.9, -5, -11.6],
-    [9.8, -5, -4],
-    [16.0, -5, 10.1],
-    [3.9, -5, 8.7],
-    [-4.2, -5, 17.9]
+    [-6.6, -10, 5.6],
+    [-17.9, -10, 1.0],
+    [-7.2, -10, -5.0],
+    [-6.1, -10, -17.2],
+    [2.9, -10, -8.9],
+    [14.9, -10, -11.6],
+    [9.8, -10, -4],
+    [16.0, -10, 10.1],
+    [3.9, -10, 8.7],
+    [-4.2, -10, 17.9]
     // [-2, -4, -2],
     // [2, -4, -2],
     // [2, -4, 2],
@@ -122,9 +47,9 @@ function Scene() {
   ]);
 
   const [ceiling, setCeiling] = useState<THREE.Vector3Tuple[]>([
-    [6.0, 5, 0],
-    [-3.0, 5, 5.2],
-    [-3.0, 5, -5.2]
+    [6.0, 10, 0],
+    [-3.0, 10, 5.2],
+    [-3.0, 10, -5.2]
     // [-2.5, 4, 0.5],
     // [0.5, 4, 2.5],
     // [2.5, 4, -0.5],
@@ -161,6 +86,7 @@ function Scene() {
 
       {/* <Cap path={ceiling} />
       <Cap path={floor} /> */}
+
       <mesh>
         <bufferGeometry>
           <bufferAttribute
@@ -181,48 +107,27 @@ function Scene() {
         <meshStandardMaterial color="pink" flatShading side={THREE.DoubleSide} />
       </mesh>
 
-      <group>
-        {floor.map((point, i) => (
-          <Fragment key={i}>
-            <Point
-              position={point}
-              onPointerDown={() => setDragging(true)}
-              onPointerMove={e => {
-                if (!dragging) return;
+      <Plane
+        path={floor}
+        color="blue"
+        onPointerDown={() => setDragging(true)}
+        onChangePath={path => {
+          if (!dragging) return;
+          setFloor(path);
+        }}
+        onPointerUp={() => setDragging(false)}
+      />
 
-                setFloor(points =>
-                  points.map((point, j) => {
-                    if (i !== j) return point;
-                    return [e.x, point[1], e.z];
-                  })
-                );
-              }}
-              onPointerUp={() => setDragging(false)}
-            />
-          </Fragment>
-        ))}
-      </group>
-      <group>
-        {ceiling.map((point, i) => (
-          <Fragment key={i}>
-            <Point
-              position={point}
-              onPointerDown={() => setDragging(true)}
-              onPointerMove={e => {
-                if (!dragging) return;
-
-                setCeiling(points =>
-                  points.map((point, j) => {
-                    if (i !== j) return point;
-                    return [e.x, point[1], e.z];
-                  })
-                );
-              }}
-              onPointerUp={() => setDragging(false)}
-            />
-          </Fragment>
-        ))}
-      </group>
+      <Plane
+        path={ceiling}
+        color="blue"
+        onPointerDown={() => setDragging(true)}
+        onChangePath={path => {
+          if (!dragging) return;
+          setCeiling(path);
+        }}
+        onPointerUp={() => setDragging(false)}
+      />
 
       <OrbitControls enableRotate={!dragging} />
       <Stats />
