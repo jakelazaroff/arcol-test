@@ -2,6 +2,8 @@
 
 import { useCallback } from "react";
 
+import css from "./page.module.css";
+
 import {
   between,
   center,
@@ -14,14 +16,15 @@ import {
   transformToZ0,
   type Vector3
 } from "~/lib/loft";
+import { classnames } from "~/lib/classnames";
 
-const triangle: Vector3[] = [
+const ceiling: Vector3[] = [
   [60, 0, 0],
   [-30, 0, 52],
   [-30, 0, -52]
 ];
 
-const star: Vector3[] = [
+const floor: Vector3[] = [
   [-66, 0, 56],
   [-179, 0, 10],
   [-72, 0, -50],
@@ -32,7 +35,32 @@ const star: Vector3[] = [
   [160, 0, 101],
   [39, 0, 87],
   [-42, 0, 179]
-];
+].map(([x, y, z]) => [x * 1.5, y * 1.5, z * 1.5] as const);
+
+const p1 = ceiling.map<Vector3>(v => [...v]),
+  p2 = floor.map<Vector3>(v => [...v]);
+
+transformToZ0(p1);
+transformToZ0(p2);
+
+center(p1);
+center(p2);
+
+if (isClockwise(p1)) p1.reverse();
+if (isClockwise(p2)) p2.reverse();
+
+let pS = p1,
+  pL = p2;
+if (pS.length > pL.length) {
+  pS = p2;
+  pL = p1;
+}
+
+const rays = raycast(pS, pL);
+const connections = connectVerts(pS, pL, rays);
+
+const connections2: typeof connections = JSON.parse(JSON.stringify(connections));
+connectAcrossRays(connections2);
 
 export default function Home() {
   const ref = useCallback((canvas: HTMLCanvasElement | null) => {
@@ -44,7 +72,7 @@ export default function Home() {
 
     // scale canvas to element size
     ctx.canvas.width = w * devicePixelRatio;
-    ctx.canvas.height = w * devicePixelRatio;
+    ctx.canvas.height = h * devicePixelRatio;
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
     // translate and scale to orient coordinate system
@@ -61,28 +89,6 @@ export default function Home() {
 
     ctx.stroke();
 
-    const p1 = triangle.map<Vector3>(v => [...v]),
-      p2 = star.map<Vector3>(v => [...v]);
-
-    transformToZ0(p1);
-    transformToZ0(p2);
-
-    center(triangle);
-    center(star);
-
-    if (isClockwise(p1)) p1.reverse();
-    if (isClockwise(p2)) p2.reverse();
-
-    let pS = p1,
-      pL = p2,
-      vertices = new Float32Array([...star, ...triangle].flat());
-    if (pS.length > pL.length) {
-      pS = p2;
-      pL = p1;
-      vertices = new Float32Array([...triangle, ...star].flat());
-    }
-
-    const rays = raycast(pS, pL);
     ctx.lineWidth = 2;
     ctx.strokeStyle = "orange";
     for (const ray of rays) {
@@ -92,82 +98,33 @@ export default function Home() {
       ctx.stroke();
     }
 
-    const connections = connectVerts(pS, pL, rays);
-
-    // let col = connections[0].indexOf(true),
-    //   row = 0;
-    // let i = 0;
-    // console.log(connections);
-    // while (true) {
-    //   const nextRow = (row + 1) % pL.length,
-    //     nextCol = (col + 1) % pS.length;
-    //   console.log(
-    //     `[${nextRow}][${col}] = ${connections[nextRow][col]}`,
-    //     `[${row}][${nextCol}] = ${connections[row][nextCol]}`
-    //   );
-    //   if (connections[nextRow][col]) {
-    //     row = nextRow;
-    //     continue;
-    //   }
-    //   if (connections[row][nextCol]) {
-    //     col = nextCol;
-    //     continue;
-    //   }
-
-    //   console.log("BREAK", `pL: ${row}, ${nextRow}`, `pS: ${col}, ${nextCol}`);
-    //   if (row === 0 || ++i === 20) break;
-    // }
-
-    const connections2: typeof connections = JSON.parse(JSON.stringify(connections));
-    connectAcrossRays(connections2);
-
     drawConnections(ctx, connections2, pL, pS, "magenta");
     drawConnections(ctx, connections, pL, pS, "lime");
-
-    console.log(connections2.join("\n"));
-    // generateTris(connections);
-    // for (let col = 0; col < pS.length; col++) {
-    //   // s1 = pS[i];
-    //   // s2 = pS[(i + 1) % pS.length];
-    //   // get the rays surrounding that point
-    //   const start = rays[col],
-    //     end = rays[(col + 1) % rays.length];
-
-    //   // for each point in `pL`…
-    //   let crossed = false;
-    //   for (let row = 0; row < pL.length; row++) {
-    //     // get the angle of that point
-    //     const angle = normalize(Math.atan2(pL[row][1], pL[row][0]));
-
-    //     console.log(row, angle, crossed);
-
-    //     // if the angle is between the two rays, note that we've crossed the second ray
-    //     if (between(start, angle, end)) crossed = true;
-
-    //     // if we haven't yet crossed, skip to the next point
-    //     if (!crossed) continue;
-
-    //     // if we're here, we've gone *past* the second ray
-
-    //     // l1 = pL[j];
-    //     // l2 = pL[(j + 1) % pL.length];
-    //     // console.log([col, (col + 1) % pS.length], [row, (row + 1) % pL.length]);
-
-    //     // connections[row][col] = true;
-    //     console.log(
-    //       "CONNECT",
-    //       `pS: ${col}, ${(col + 1) % rays.length}`,
-    //       `pL: ${row}, ${(row + 1) % pL.length}`
-    //     );
-    //     break;
-    //   }
-    // }
 
     drawShape(ctx, p1, "red");
     drawShape(ctx, p2, "blue");
   }, []);
 
-  return <canvas style={{ width: "100%", height: "100%" }} ref={ref} />;
+  return (
+    <div className={css.wrapper}>
+      <canvas style={{ width: "100%", height: "100%" }} ref={ref} />
+      <div className={css.table}>
+        {connections.map((row, i) =>
+          row.map((col, j) => (
+            <div
+              key={i + "_" + j}
+              className={classnames(css.connection, {
+                [css.green!]: connections[i][j],
+                [css.purple!]: connections2[i][j]
+              })}
+            >
+              {i}, {j}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
 
 function drawShape(ctx: CanvasRenderingContext2D, path: Vector3[], color: string) {

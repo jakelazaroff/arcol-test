@@ -44,7 +44,9 @@ export function loft(
   const rays = raycast(pS, pL);
 
   // 9) Connect vertices on pL to the vertices on pS in the sections created by the rays
+  console.log(JSON.stringify({ pS, pL, rays }));
   const connections = connectVerts(pS, pL, rays);
+  console.log(connections.join("\n"));
 
   // 10) Find appropriate connections for unconnected vertices in pL if they exist
 
@@ -53,10 +55,9 @@ export function loft(
   // 12) Make the final connections that cross each of the rays
   connectAcrossRays(connections);
 
-  console.log(connections);
-
   // 13) Generate a connected list of triangles
 
+  console.log(connections.join("\n"));
   let row = 0,
     col = connections[0].findIndex(edge => edge);
   if (col === -1) throw new Error("No starting point");
@@ -73,6 +74,11 @@ export function loft(
 
     const nextRow = (row + 1) % pL.length,
       nextCol = (col + 1) % pS.length;
+    console.log(
+      row,
+      col,
+      connections[nextRow]?.[col] ? "DOWN" : connections[row][nextCol] ? "RIGHT" : "BREAK"
+    );
     if (connections[nextRow]?.[col]) {
       row = nextRow;
       i3 = row;
@@ -83,7 +89,6 @@ export function loft(
       v3 = pS[col];
     } else throw new Error("Broken path");
 
-    console.log(i3, v3);
     const tri: (typeof tris)[0] = [i1, i2, i3];
     if (!isClockwise([v1, v2, v3])) tri.reverse();
     tris.push(tri);
@@ -130,15 +135,9 @@ export function transformToZ0(path: Vector3[]): void {
 }
 
 export function center(path: Vector3[]) {
-  // calculate path bounding box
-  const minX = Math.min(...path.map(v => v[0])),
-    minY = Math.min(...path.map(v => v[1]));
-  const maxX = Math.max(...path.map(v => v[0])),
-    maxY = Math.max(...path.map(v => v[1]));
-
-  // calculate center coords
-  const cx = (minX + maxX) / 2,
-    cy = (minY + maxY) / 2;
+  // calculate average of coordinates
+  const cx = path.reduce((sum, [x]) => sum + x, 0) / path.length,
+    cy = path.reduce((sum, [, y]) => sum + y, 0) / path.length;
 
   // translate points around the origin
   for (const v of path) {
@@ -184,7 +183,8 @@ export function raycast(pS: Vector3[], pL: Vector3[]) {
 }
 
 export function connectVerts(pS: Vector3[], pL: Vector3[], rays: number[]) {
-  const connections = new Array<number>(pL.length)
+  // create the adjacency matrix
+  const matrix = new Array<number>(pL.length)
     .fill(0)
     .map(() => new Array<boolean>(pS.length).fill(false));
 
@@ -198,36 +198,48 @@ export function connectVerts(pS: Vector3[], pL: Vector3[], rays: number[]) {
     for (let row = 0; row < pL.length; row++) {
       // get the angle of that point
       const angle = normalize(Math.atan2(pL[row][1], pL[row][0]));
+      if (row === 4) console.log(row, col, start, angle, end, between(start, angle, end));
 
       // if the angle is between the two rays, set the corresponding adjacency matrix cell to `true`
-      if (between(start, angle, end)) connections[row][col] = true;
+      if (between(start, angle, end)) matrix[row][col] = true;
     }
   }
 
-  return connections;
+  return matrix;
 }
 
 export function connectAcrossRays(matrix: boolean[][]) {
+  // find all the connections in the matrix
   const connections: [row: number, col: number][] = [];
   const rows = matrix.length,
     cols = matrix[0].length;
+
+  // iterate through the rows and cols, pushing the `true` values into the connections list
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       if (matrix[row][col]) connections.push([row, col]);
     }
   }
 
+  // for each connection…
   for (let i = 0; i < connections.length; i++) {
     const [row, col] = connections[i];
+
+    // find the neighboring cells in the matrix
     const above = Number(matrix.at((row - 1) % rows)?.[col]),
       below = Number(matrix.at((row + 1) % rows)?.[col]),
       left = Number(matrix[row].at((col - 1) % cols)),
       right = Number(matrix[row].at((col + 1) % cols));
 
+    // skip cells that have two connections
     if (above + below + left + right === 2) continue;
-    const [nextRow, nextCol] = connections[++i];
-    console.log(`pS: ${col}, ${nextCol}; pL: ${row}, ${nextRow}`);
+
+    // get the next connected cell
+    const [nextRow, nextCol] = connections[++i % connections.length];
+    // mark a connection in the next column
     matrix[row][nextCol] = true;
+
+    console.log(`pS: ${col}, ${nextCol}; pL: ${row}, ${nextRow}`);
   }
 }
 
