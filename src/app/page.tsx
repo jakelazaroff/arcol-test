@@ -6,9 +6,12 @@ import { Stats, OrbitControls } from "@react-three/drei";
 
 import Plane from "~/components/Plane";
 import { loft } from "~/lib/loft";
+import gui, { grid, stats, wireframe } from "~/lib/settings";
 
 import * as THREE from "three";
 import { ErrorBoundary } from "react-error-boundary";
+import { Provider, useAtomValue } from "jotai";
+import { store } from "~/lib/settings";
 
 function Cap(props: { path: THREE.Vector3Tuple[]; color?: string | number }) {
   const { path, color = "pink" } = props;
@@ -26,6 +29,8 @@ const zeroes = new Array(600).fill(0);
 type Path = THREE.Vector3Tuple[];
 
 export default function Home() {
+  useEffect(() => gui(), []);
+
   const [floor, setFloor] = useState<Path>([
     [-6.6, -10, 5.6],
     [-17.9, -10, 1.0],
@@ -55,16 +60,18 @@ export default function Home() {
   ]);
 
   return (
-    <ErrorBoundary fallback={<Fallback floor={floor} ceiling={ceiling} />}>
-      <Canvas camera={{ position: [0, 20, 20] }}>
-        <Scene
-          floor={floor}
-          onChangeFloor={setFloor}
-          ceiling={ceiling}
-          onChangeCeiling={setCeiling}
-        />
-      </Canvas>
-    </ErrorBoundary>
+    <Provider store={store}>
+      <ErrorBoundary fallback={<Fallback floor={floor} ceiling={ceiling} />}>
+        <Canvas camera={{ position: [0, 30, 30] }}>
+          <Scene
+            floor={floor}
+            onChangeFloor={setFloor}
+            ceiling={ceiling}
+            onChangeCeiling={setCeiling}
+          />
+        </Canvas>
+      </ErrorBoundary>
+    </Provider>
   );
 }
 
@@ -97,9 +104,15 @@ function Scene(props: SceneProps) {
     index.current.needsUpdate = true;
   }, [lofted]);
 
+  const displayStats = useAtomValue(stats);
+  const displayGrid = useAtomValue(grid);
+  const displayWireframe = useAtomValue(wireframe);
+
   return (
     <>
-      <gridHelper args={[50, 10]} />
+      {displayGrid && <gridHelper args={[50, 10]} />}
+      {displayStats && <Stats />}
+      <OrbitControls enableRotate={!dragging} />
       <ambientLight intensity={Math.PI / 2} />
       <spotLight
         position={[100, 100, 100]}
@@ -132,7 +145,12 @@ function Scene(props: SceneProps) {
             needsUpdate
           />
         </bufferGeometry>
-        <meshStandardMaterial color="pink" flatShading side={THREE.DoubleSide} />
+        <meshStandardMaterial
+          color="pink"
+          flatShading
+          side={THREE.DoubleSide}
+          wireframe={displayWireframe}
+        />
       </mesh>
 
       <Plane
@@ -166,9 +184,6 @@ function Scene(props: SceneProps) {
         onRemovePoint={i => onChangeCeiling(path => path.filter((_, j) => i !== j))}
         onPointerUp={() => setDragging(false)}
       />
-
-      <OrbitControls enableRotate={!dragging} />
-      <Stats />
     </>
   );
 }

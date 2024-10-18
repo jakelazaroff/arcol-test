@@ -1,7 +1,9 @@
 import { Text } from "@react-three/drei";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
+import { useAtomValue } from "jotai";
 import { Fragment, useState } from "react";
 import * as THREE from "three";
+import { labels } from "~/lib/settings";
 
 interface Props {
   path: THREE.Vector3Tuple[];
@@ -111,6 +113,8 @@ function Point(props: PointProps) {
   const { color = "blue", label, onPointerDown, onPointerMove, onPointerUp, ...rest } = props;
   const { camera } = useThree();
 
+  const displayLabels = useAtomValue(labels);
+
   const [, setHover] = useState(false);
 
   return (
@@ -151,7 +155,7 @@ function Point(props: PointProps) {
         <sphereGeometry args={[0.5, 32, 16]} />
         <meshStandardMaterial color={color} />
       </mesh>
-      {label !== "" ? (
+      {displayLabels && label !== "" ? (
         <Text
           position={[rest.position[0], rest.position[1] + 2, rest.position[2]]}
           color="black"

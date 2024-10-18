@@ -14,6 +14,12 @@ dependencies:
   gl-matrix:
     specifier: ^3.4.3
     version: 3.4.3
+  jotai:
+    specifier: ^2.10.1
+    version: 2.10.1(@types/react@18.3.11)(react@18.3.1)
+  lil-gui:
+    specifier: ^0.19.2
+    version: 0.19.2
   next:
     specifier: 14.2.15
     version: 14.2.15(react-dom@18.3.1)(react@18.3.1)
@@ -1106,6 +1112,22 @@ packages:
       react: 18.3.1
     dev: false
 
+  /jotai@2.10.1(@types/react@18.3.11)(react@18.3.1):
+    resolution: {integrity: sha512-4FycO+BOTl2auLyF2Chvi6KTDqdsdDDtpaL/WHQMs8f3KS1E3loiUShQzAzFA/sMU5cJ0hz/RT1xum9YbG/zaA==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': '>=17.0.0'
+      react: '>=17.0.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      react:
+        optional: true
+    dependencies:
+      '@types/react': 18.3.11
+      react: 18.3.1
+    dev: false
+
   /js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
     dev: false
@@ -1114,6 +1136,10 @@ packages:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
     dependencies:
       immediate: 3.0.6
+    dev: false
+
+  /lil-gui@0.19.2:
+    resolution: {integrity: sha512-nU8j4ND702ouGfQZoaTN4dfXxacvGOAVK0DtmZBVcUYUAeYQXLQAjAN50igMHiba3T5jZyKEjXZU+Ntm1Qs6ZQ==}
     dev: false
 
   /loose-envify@1.4.0:
