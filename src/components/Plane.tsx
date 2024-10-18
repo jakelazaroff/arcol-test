@@ -1,5 +1,5 @@
 import { Text } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
+import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { Fragment, useState } from "react";
 import * as THREE from "three";
 
@@ -8,12 +8,13 @@ interface Props {
   color?: string;
   onPointerDown(): void;
   onAddPoint(i: number, point: THREE.Vector3Tuple): void;
-  onChangePath(i: number, point: THREE.Vector3Tuple): void;
+  onRemovePoint(i: number): void;
+  onMovePoint(i: number, point: THREE.Vector3Tuple): void;
   onPointerUp(): void;
 }
 
 export default function Plane(props: Props) {
-  const { path, color, onPointerDown, onPointerUp, onAddPoint, onChangePath } = props;
+  const { path, color, onPointerDown, onPointerUp, onAddPoint, onRemovePoint, onMovePoint } = props;
 
   const [preview, setPreview] = useState<THREE.Vector3 | null>(null);
 
@@ -39,8 +40,11 @@ export default function Plane(props: Props) {
               position={point}
               color={color}
               label={"" + i}
-              onPointerDown={onPointerDown}
-              onPointerMove={e => onChangePath(i, [e.x, point[1], e.z])}
+              onPointerDown={e => {
+                if (e.altKey) return onRemovePoint(i);
+                onPointerDown();
+              }}
+              onPointerMove={e => onMovePoint(i, [e.x, point[1], e.z])}
               onPointerUp={onPointerUp}
             />
             <mesh
@@ -96,9 +100,9 @@ interface PointProps {
   position: THREE.Vector3Tuple;
   label?: string;
   color?: string | number;
-  onPointerDown(): void;
+  onPointerDown(e: ThreeEvent<PointerEvent>): void;
   onPointerMove(vector: THREE.Vector3): void;
-  onPointerUp(): void;
+  onPointerUp(e: ThreeEvent<PointerEvent>): void;
 }
 
 const raycaster = new THREE.Raycaster();
@@ -121,7 +125,7 @@ function Point(props: PointProps) {
           const target = e.target as ThreeTarget;
           target?.setPointerCapture(e.pointerId);
 
-          onPointerDown();
+          onPointerDown(e);
         }}
         onPointerMove={e => {
           const canvas = e.nativeEvent.target as HTMLCanvasElement;
@@ -140,7 +144,7 @@ function Point(props: PointProps) {
           const target = e.target as ThreeTarget;
           target?.releasePointerCapture(e.pointerId);
 
-          onPointerUp();
+          onPointerUp(e);
         }}
         onPointerCancel={() => {}}
       >

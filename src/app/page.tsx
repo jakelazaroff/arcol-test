@@ -139,7 +139,7 @@ function Scene(props: SceneProps) {
         path={floor}
         color="blue"
         onPointerDown={() => setDragging(true)}
-        onChangePath={(i, point) => {
+        onMovePoint={(i, point) => {
           if (!dragging) return;
           onChangeFloor(path => [...path.slice(0, i), point, ...path.slice(i + 1)]);
         }}
@@ -147,6 +147,7 @@ function Scene(props: SceneProps) {
           setDragging(true);
           onChangeFloor(path => [...path.slice(0, i), point, ...path.slice(i)]);
         }}
+        onRemovePoint={i => onChangeFloor(path => path.filter((_, j) => i !== j))}
         onPointerUp={() => setDragging(false)}
       />
 
@@ -154,7 +155,7 @@ function Scene(props: SceneProps) {
         path={ceiling}
         color="blue"
         onPointerDown={() => setDragging(true)}
-        onChangePath={(i, point) => {
+        onMovePoint={(i, point) => {
           if (!dragging) return;
           onChangeCeiling(path => [...path.slice(0, i), point, ...path.slice(i + 1)]);
         }}
@@ -162,6 +163,7 @@ function Scene(props: SceneProps) {
           setDragging(true);
           onChangeCeiling(path => [...path.slice(0, i), point, ...path.slice(i)]);
         }}
+        onRemovePoint={i => onChangeCeiling(path => path.filter((_, j) => i !== j))}
         onPointerUp={() => setDragging(false)}
       />
 
