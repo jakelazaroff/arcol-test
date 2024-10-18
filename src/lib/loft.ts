@@ -4,10 +4,7 @@ import { vec3, mat4 } from "gl-matrix";
 
 export type Vector3 = [x: number, y: number, z: number];
 
-export function loft(
-  start: Vector3[],
-  end: Vector3[]
-): { vertices: Float32Array; indices: Uint16Array } {
+export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; indices: number[] } {
   // https://micsymposium.org/mics2018/proceedings/MICS_2018_paper_65.pdf
 
   // 1) Make copies of the paths to manipulate in 3D space
@@ -31,11 +28,11 @@ export function loft(
   // 6) Determine which path has less vertices (pS) and which has more (pL)
   let pS = p1,
     pL = p2,
-    vertices = new Float32Array([...end, ...start].flat());
+    vertices = [...end, ...start].flat();
   if (pS.length > pL.length) {
     pS = p2;
     pL = p1;
-    vertices = new Float32Array([...start, ...end].flat());
+    vertices = [...start, ...end].flat();
   }
 
   // 7) Scale pL to completely encompass pS
@@ -133,7 +130,7 @@ export function raycast(pS: Vector3[]) {
   // iterate through each vertex
   for (let i = 0; i < pS.length; i++) {
     // get the coordinates of the current and next vertex, wrapping around to 0
-    const [x1, y1] = pS.at((i - 1) % pS.length)!!!,
+    const [x1, y1] = pS.at((i - 1) % pS.length)!,
       [x2, y2] = pS[i];
 
     // add the angle of the ray from (0, 0) through the midpoint of the line between the vertices
@@ -196,7 +193,7 @@ export function connectAcrossRays(matrix: boolean[][]) {
     if (above + below + left + right === 2) continue;
 
     // get the next connected cell
-    const [_nextRow, nextCol] = connections[++i % connections.length];
+    const [_nextRow, nextCol] = connections[(i + 1) % connections.length];
     // mark a connection in the next column
     matrix[row][nextCol] = true;
   }
@@ -250,7 +247,7 @@ export function generateTris(pL: Vector3[], pS: Vector3[], matrix: boolean[][]) 
     tris.push(tri);
   }
 
-  return new Uint16Array(tris.flat());
+  return tris.flat();
 }
 
 const TWO_PI = Math.PI * 2;

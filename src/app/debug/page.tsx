@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { type CSSProperties, useCallback } from "react";
 
 import css from "./page.module.css";
 
@@ -11,28 +11,29 @@ import {
   isClockwise,
   raycast,
   transformToZ0,
-  type Vector3
+  type Vector3,
 } from "~/lib/loft";
 import { classnames } from "~/lib/classnames";
 
 const ceiling: Vector3[] = [
-  [60, 0, 0],
-  [-30, 0, 52],
-  [-30, 0, -52]
-];
+  [6, 10, 0],
+  [0.8730043437764863, 10, 2.962264156929141],
+  [-3, 10, 5.2],
+  [-3, 10, -5.2],
+].map(([x, y, z]) => [x * 10, y * 10, z * 10] as const);
 
 const floor: Vector3[] = [
-  [-66, 0, 56],
-  [-179, 0, 10],
-  [-72, 0, -50],
-  [-61, 0, -172],
-  [29, 0, -89],
-  [149, 0, -116],
-  [98, 0, -4],
-  [160, 0, 101],
-  [39, 0, 87],
-  [-42, 0, 179]
-].map(([x, y, z]) => [x * 1.5, y * 1.5, z * 1.5] as const);
+  [-6.6, -10, 5.6],
+  [-17.9, -10, 1],
+  [-7.2, -10, -5],
+  [-6.1, -10, -17.2],
+  [2.9, -10, -8.9],
+  [14.9, -10, -11.6],
+  [9.8, -10, -4],
+  [16, -10, 10.1],
+  [3.9, -10, 8.7],
+  [-4.2, -10, 17.9],
+].map(([x, y, z]) => [x * 15, y * 15, z * 15] as const);
 
 const p1 = ceiling.map<Vector3>(v => [...v]),
   p2 = floor.map<Vector3>(v => [...v]);
@@ -105,19 +106,19 @@ export default function Home() {
   return (
     <div className={css.wrapper}>
       <canvas style={{ width: "100%", height: "100%" }} ref={ref} />
-      <div className={css.table}>
+      <div className={css.table} style={{ "--columns": pS.length } as CSSProperties}>
         {connections.map((row, i) =>
           row.map((col, j) => (
             <div
               key={i + "_" + j}
               className={classnames(css.connection, {
                 [css.green!]: connections[i][j],
-                [css.purple!]: connections2[i][j]
+                [css.purple!]: connections2[i][j],
               })}
             >
               {i}, {j}
             </div>
-          ))
+          )),
         )}
       </div>
     </div>
@@ -136,10 +137,20 @@ function drawShape(ctx: CanvasRenderingContext2D, path: Vector3[], color: string
   ctx.closePath();
   ctx.stroke();
 
+  let i = 0;
   for (const [x, y] of path) {
     ctx.beginPath();
     ctx.ellipse(x, y, 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.scale(1, -1);
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillStyle = "black";
+    ctx.strokeStyle = "white";
+    ctx.strokeText(`${i}`, x, -y - 8);
+    ctx.fillText(`${i}`, x, -y - 8);
+    ctx.scale(1, -1);
+    i += 1;
   }
 }
 
@@ -148,7 +159,7 @@ function drawConnections(
   matrix: boolean[][],
   pL: Vector3[],
   pS: Vector3[],
-  color: string
+  color: string,
 ) {
   for (let i = 0; i < matrix.length; i++) {
     for (let j = 0; j < matrix[0].length; j++) {
