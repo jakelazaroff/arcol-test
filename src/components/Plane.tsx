@@ -6,13 +6,13 @@ import * as THREE from "three";
 import { labels } from "~/lib/settings";
 
 interface Props {
-  path: THREE.Vector3Tuple[];
+  path: THREE.Vector3[];
   color?: string;
-  onPointerDown(): void;
-  onAddPoint(i: number, point: THREE.Vector3Tuple): void;
+  onPointerDown(point: THREE.Vector3): void;
+  onAddPoint(i: number, point: THREE.Vector3): void;
   onRemovePoint(i: number): void;
-  onMovePoint(i: number, point: THREE.Vector3Tuple): void;
-  onPointerUp(): void;
+  onMovePoint(i: number, point: THREE.Vector3): void;
+  onPointerUp(point: THREE.Vector3): void;
 }
 
 export default function Plane(props: Props) {
@@ -25,8 +25,8 @@ export default function Plane(props: Props) {
       {path.map((point, i) => {
         const prev = path.at((i - 1) % path.length)!;
 
-        const v1 = new THREE.Vector3(...prev),
-          v2 = new THREE.Vector3(...point);
+        const v1 = prev.clone(),
+          v2 = point.clone();
 
         const c = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
         const length = v1.distanceTo(v2);
@@ -44,18 +44,18 @@ export default function Plane(props: Props) {
               label={"" + i}
               onPointerDown={e => {
                 if (e.altKey) return onRemovePoint(i);
-                onPointerDown();
+                onPointerDown(point);
               }}
-              onPointerMove={e => onMovePoint(i, [e.x, point[1], e.z])}
-              onPointerUp={onPointerUp}
+              onPointerMove={e => onMovePoint(i, new THREE.Vector3(e.x, point.y, e.z))}
+              onPointerUp={() => onPointerUp(point)}
             />
             <mesh
               position={c}
               quaternion={rotation}
               visible={false}
               onPointerMove={e => {
-                const v1 = new THREE.Vector3(...prev),
-                  v2 = new THREE.Vector3(...point);
+                const v1 = prev.clone(),
+                  v2 = point.clone();
 
                 const AB = new THREE.Vector3().subVectors(v2, v1);
                 const AP = new THREE.Vector3().subVectors(e.point, v1);
@@ -74,7 +74,7 @@ export default function Plane(props: Props) {
                 if (!preview) return;
                 e.stopPropagation();
                 setPreview(null);
-                onAddPoint(i, [preview.x, preview.y, preview.z]);
+                onAddPoint(i, preview);
               }}
               onPointerOut={() => setPreview(null)}
             >
@@ -99,7 +99,7 @@ type ThreeTarget = {
 } | null;
 
 interface PointProps {
-  position: THREE.Vector3Tuple;
+  position: THREE.Vector3;
   label?: string;
   color?: string | number;
   onPointerDown(e: ThreeEvent<PointerEvent>): void;
@@ -139,7 +139,7 @@ function Point(props: PointProps) {
           const x = (e.x / width) * 2 - 1,
             y = -(e.y / height) * 2 + 1;
 
-          const intersection = castToYPlane(camera, new THREE.Vector2(x, y), rest.position[1]);
+          const intersection = castToYPlane(camera, new THREE.Vector2(x, y), rest.position.y);
           if (intersection) onPointerMove(intersection);
         }}
         onPointerUp={e => {
@@ -157,7 +157,7 @@ function Point(props: PointProps) {
       </mesh>
       {displayLabels && label !== "" ? (
         <Text
-          position={[rest.position[0], rest.position[1] + 2, rest.position[2]]}
+          position={[rest.position.x, rest.position.y + 2, rest.position.z]}
           color="black"
           scale={[2, 2, 2]}
         >

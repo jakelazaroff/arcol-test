@@ -10,33 +10,33 @@ import {
   connectVerts,
   isClockwise,
   raycast,
-  transformToZ0,
-  type Vector3,
+  transformToZ0
 } from "~/lib/loft";
+import * as THREE from "three";
 import { classnames } from "~/lib/classnames";
 
-const ceiling: Vector3[] = [
-  [6, 10, 0],
-  [0.8730043437764863, 10, 2.962264156929141],
-  [-3, 10, 5.2],
-  [-3, 10, -5.2],
-].map(([x, y, z]) => [x * 10, y * 10, z * 10] as const);
+const ceiling: THREE.Vector3[] = [
+  new THREE.Vector3(6, 10, 0),
+  new THREE.Vector3(0.8730043437764863, 10, 2.962264156929141),
+  new THREE.Vector3(-3, 10, 5.2),
+  new THREE.Vector3(-3, 10, -5.2),
+].map(v3 => v3.multiplyScalar(10));
 
-const floor: Vector3[] = [
-  [-6.6, -10, 5.6],
-  [-17.9, -10, 1],
-  [-7.2, -10, -5],
-  [-6.1, -10, -17.2],
-  [2.9, -10, -8.9],
-  [14.9, -10, -11.6],
-  [9.8, -10, -4],
-  [16, -10, 10.1],
-  [3.9, -10, 8.7],
-  [-4.2, -10, 17.9],
-].map(([x, y, z]) => [x * 15, y * 15, z * 15] as const);
+const floor: THREE.Vector3[] = [
+  new THREE.Vector3(-6.6, -10, 5.6),
+  new THREE.Vector3(-17.9, -10, 1),
+  new THREE.Vector3(-7.2, -10, -5),
+  new THREE.Vector3(-6.1, -10, -17.2),
+  new THREE.Vector3(2.9, -10, -8.9),
+  new THREE.Vector3(14.9, -10, -11.6),
+  new THREE.Vector3(9.8, -10, -4),
+  new THREE.Vector3(16, -10, 10.1),
+  new THREE.Vector3(3.9, -10, 8.7),
+  new THREE.Vector3(-4.2, -10, 17.9),
+].map((v) => v.multiplyScalar(15));
 
-const p1 = ceiling.map<Vector3>(v => [...v]),
-  p2 = floor.map<Vector3>(v => [...v]);
+const p1 = ceiling.map<THREE.Vector3Tuple>(v => [v.x, v.y, v.z]),
+  p2 = floor.map<THREE.Vector3Tuple>(v => [v.x, v.y, v.z]);
 
 transformToZ0(p1);
 transformToZ0(p2);
@@ -125,7 +125,7 @@ export default function Home() {
   );
 }
 
-function drawShape(ctx: CanvasRenderingContext2D, path: Vector3[], color: string) {
+function drawShape(ctx: CanvasRenderingContext2D, path: THREE.Vector3Tuple[], color: string) {
   ctx.beginPath();
 
   ctx.lineWidth = 2;
@@ -157,8 +157,8 @@ function drawShape(ctx: CanvasRenderingContext2D, path: Vector3[], color: string
 function drawConnections(
   ctx: CanvasRenderingContext2D,
   matrix: boolean[][],
-  pL: Vector3[],
-  pS: Vector3[],
+  pL: THREE.Vector3Tuple[],
+  pS: THREE.Vector3Tuple[],
   color: string,
 ) {
   for (let i = 0; i < matrix.length; i++) {

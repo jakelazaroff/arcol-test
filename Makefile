@@ -12,15 +12,8 @@ dev-client:
 dev-server:
 	@pnpm ysweet
 
-##@ Deploying
-.PHONY: build deploy
-
-build: ## Build the web client
-	@pnpm build
-
-deploy: ## Deploy the y-sweet worker
-	@cd lib/y-sweet/crates/y-sweet-worker && ./build.sh
-	@pnpm wrangler deploy
+test:
+	@pnpm test
 
 ##@ Help
 .PHONY: help

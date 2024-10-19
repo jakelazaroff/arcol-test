@@ -2,14 +2,15 @@ import { vec3, mat4 } from "gl-matrix";
 
 // https://micsymposium.org/mics2018/proceedings/MICS_2018_paper_65.pdf
 
-export type Vector3 = [x: number, y: number, z: number];
+export type Vector3 = { x: number, y: number, z: number };
+type Vector3Tuple = [x: number, y: number, z: number];
 
 export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; indices: number[] } {
   // https://micsymposium.org/mics2018/proceedings/MICS_2018_paper_65.pdf
 
   // 1) Make copies of the paths to manipulate in 3D space
-  const p1 = start.map<Vector3>(v => [...v]),
-    p2 = end.map<Vector3>(v => [...v]);
+  const p1 = start.map<Vector3Tuple>(v => [v.x, v.y, v.z]),
+    p2 = end.map<Vector3Tuple>(v => [v.x, v.y, v.z]);
 
   // 2) Map nonplanar paths to an appropriate plane
 
@@ -28,11 +29,11 @@ export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; in
   // 6) Determine which path has less vertices (pS) and which has more (pL)
   let pS = p1,
     pL = p2,
-    vertices = [...end, ...start].flat();
+    vertices = [...end, ...start].map(({ x, y, z }) => [x, y, z]).flat(2);
   if (pS.length > pL.length) {
     pS = p2;
     pL = p1;
-    vertices = [...start, ...end].flat();
+    vertices = [...start, ...end].map(({ x, y, z }) => [x, y, z]).flat(2);
   }
 
   // 7) Scale pL to completely encompass pS
@@ -56,7 +57,7 @@ export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; in
   return { vertices, indices };
 }
 
-export function transformToZ0(path: Vector3[]): void {
+export function transformToZ0(path: Vector3Tuple[]): void {
   // calculate the normal vector of the plane using the first three vertices
   const [p1, p2, p3] = path;
   const v1 = vec3.create();
@@ -93,7 +94,7 @@ export function transformToZ0(path: Vector3[]): void {
   }
 }
 
-export function center(path: Vector3[]) {
+export function center(path: Vector3Tuple[]) {
   // calculate average of coordinates
   const cx = path.reduce((sum, [x]) => sum + x, 0) / path.length,
     cy = path.reduce((sum, [, y]) => sum + y, 0) / path.length;
@@ -105,7 +106,7 @@ export function center(path: Vector3[]) {
   }
 }
 
-export function isClockwise(path: Vector3[]) {
+export function isClockwise(path: Vector3Tuple[]) {
   // https://stackoverflow.com/a/1165943
 
   let sum = 0;
@@ -124,7 +125,7 @@ export function isClockwise(path: Vector3[]) {
   return sum > 0;
 }
 
-export function raycast(pS: Vector3[]) {
+export function raycast(pS: Vector3Tuple[]) {
   const rays: number[] = [];
 
   // iterate through each vertex
@@ -141,7 +142,7 @@ export function raycast(pS: Vector3[]) {
   return rays;
 }
 
-export function connectVerts(pL: Vector3[], pS: Vector3[], rays: number[]) {
+export function connectVerts(pL: Vector3Tuple[], pS: Vector3Tuple[], rays: number[]) {
   // create the adjacency matrix
   const matrix = new Array<number>(pL.length)
     .fill(0)
@@ -199,7 +200,7 @@ export function connectAcrossRays(matrix: boolean[][]) {
   }
 }
 
-export function generateTris(pL: Vector3[], pS: Vector3[], matrix: boolean[][]) {
+export function generateTris(pL: Vector3Tuple[], pS: Vector3Tuple[], matrix: boolean[][]) {
   // find the first connection in the first row
   let row = 0,
     col = matrix[0].findIndex(edge => edge);
@@ -218,7 +219,7 @@ export function generateTris(pL: Vector3[], pS: Vector3[], matrix: boolean[][]) 
       v1 = pL[row];
     const i2 = pSoffset + col,
       v2 = pS[col];
-    let i3: number, v3: Vector3;
+    let i3: number, v3: Vector3Tuple;
 
     // find next row and column, wrapping around to 0 if exceeding the number of vertices
     const nextRow = (row + 1) % pL.length,

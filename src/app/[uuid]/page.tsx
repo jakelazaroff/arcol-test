@@ -28,8 +28,6 @@ function Cap(props: { path: THREE.Vector3Tuple[]; color?: string | number }) {
 
 const zeroes = new Array(600).fill(0);
 
-type Path = THREE.Vector3Tuple[];
-
 export default function Home({ params }: { params: { uuid: string } }) {
   useEffect(() => gui(), []);
 
@@ -51,16 +49,16 @@ function Scene() {
   useEffect(() => {
     if (floor.toArray().length) return;
     floor.push([
-      toYMap([-6.6, -10, 5.6]),
-      toYMap([-17.9, -10, 1.0]),
-      toYMap([-7.2, -10, -5.0]),
-      toYMap([-6.1, -10, -17.2]),
-      toYMap([2.9, -10, -8.9]),
-      toYMap([14.9, -10, -11.6]),
-      toYMap([9.8, -10, -4]),
-      toYMap([16.0, -10, 10.1]),
-      toYMap([3.9, -10, 8.7]),
-      toYMap([-4.2, -10, 17.9]),
+      toYMap({x: -6.6, y: -10, z:5.6}),
+      toYMap({x: -17.9, y: -10, z:1.0}),
+      toYMap({x: -7.2, y: -10, z:-5.0}),
+      toYMap({x: -6.1, y: -10, z:-17.2}),
+      toYMap({x: 2.9, y: -10, z:-8.9}),
+      toYMap({x: 14.9, y: -10, z:-11.6}),
+      toYMap({x: 9.8, y: -10, z:-4}),
+      toYMap({x: 16.0, y: -10, z:10.1}),
+      toYMap({x: 3.9, y: -10, z:8.7}),
+      toYMap({x: -4.2, y: -10, z:17.9}),
       // [-2, -4, -2],
       // [2, -4, -2],
       // [2, -4, 2],
@@ -73,9 +71,9 @@ function Scene() {
     if (ceiling.toArray().length) return;
     ceiling.push([
       // triangle
-      toYMap([6.0, 10, 0]),
-      toYMap([-3.0, 10, 5.2]),
-      toYMap([-3.0, 10, -5.2]),
+      toYMap({ x:6.0, y: 10, z: 0}),
+      toYMap({ x:-3.0, y: 10, z: 5.2}),
+      toYMap({ x:-3.0, y: 10, z: -5.2}),
       // [-2.5, 4, 0.5],
       // [0.5, 4, 2.5],
       // [2.5, 4, -0.5],
@@ -159,7 +157,7 @@ function Scene() {
         path={floor.map(toVector3)}
         color="blue"
         onPointerDown={() => setDragging(true)}
-        onMovePoint={(i, [x, y, z]) => {
+        onMovePoint={(i, {x,y, z}) => {
           if (!dragging) return;
           const point = floor.get(i);
           point.set("x", x);
@@ -178,7 +176,7 @@ function Scene() {
         path={ceiling.map(toVector3)}
         color="blue"
         onPointerDown={() => setDragging(true)}
-        onMovePoint={(i, [x, y, z]) => {
+        onMovePoint={(i, {x, y, z}) => {
           if (!dragging) return;
           const point = ceiling.get(i);
           point.set("x", x);
