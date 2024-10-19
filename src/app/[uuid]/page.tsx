@@ -2,7 +2,7 @@
 
 import { OrbitControls, Stats } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { YDocProvider, useArray } from "@y-sweet/react";
+import { YDocProvider, useArray, useYjsProvider } from "@y-sweet/react";
 import { Provider, useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
@@ -35,9 +35,7 @@ export default function Home({ params }: { params: { uuid: string } }) {
     <YDocProvider docId={params.uuid} authEndpoint="/yjs">
       <Provider store={store}>
         <ErrorBoundary fallback={<Fallback />}>
-          <Canvas camera={{ position: [0, 30, 30] }}>
-            <Scene />
-          </Canvas>
+          <Scene />
         </ErrorBoundary>
       </Provider>
     </YDocProvider>
@@ -45,60 +43,73 @@ export default function Home({ params }: { params: { uuid: string } }) {
 }
 
 function Scene() {
+  const provider = useYjsProvider();
+
   const floor = useArray<Y.Map<number>>("floor");
-  useEffect(() => {
-    if (floor.toArray().length) return;
-    floor.push([
-      toYMap({x: -6.6, y: -10, z:5.6}),
-      toYMap({x: -17.9, y: -10, z:1.0}),
-      toYMap({x: -7.2, y: -10, z:-5.0}),
-      toYMap({x: -6.1, y: -10, z:-17.2}),
-      toYMap({x: 2.9, y: -10, z:-8.9}),
-      toYMap({x: 14.9, y: -10, z:-11.6}),
-      toYMap({x: 9.8, y: -10, z:-4}),
-      toYMap({x: 16.0, y: -10, z:10.1}),
-      toYMap({x: 3.9, y: -10, z:8.7}),
-      toYMap({x: -4.2, y: -10, z:17.9}),
-      // [-2, -4, -2],
-      // [2, -4, -2],
-      // [2, -4, 2],
-      // [-2, -4, 2]
-    ]);
-  }, [floor]);
-
   const ceiling = useArray<Y.Map<number>>("ceiling");
+
   useEffect(() => {
-    if (ceiling.toArray().length) return;
-    ceiling.push([
-      // triangle
-      toYMap({ x:6.0, y: 10, z: 0}),
-      toYMap({ x:-3.0, y: 10, z: 5.2}),
-      toYMap({ x:-3.0, y: 10, z: -5.2}),
-      // [-2.5, 4, 0.5],
-      // [0.5, 4, 2.5],
-      // [2.5, 4, -0.5],
-      // [-0.5, 4, -2.5]
-    ]);
-  }, [ceiling]);
+    function sync() {
+      if (!floor.length) {
+        floor.push([
+          toYMap({ x: -6.6, y: -10, z: 5.6 }),
+          toYMap({ x: -17.9, y: -10, z: 1.0 }),
+          toYMap({ x: -7.2, y: -10, z: -5.0 }),
+          toYMap({ x: -6.1, y: -10, z: -17.2 }),
+          toYMap({ x: 2.9, y: -10, z: -8.9 }),
+          toYMap({ x: 14.9, y: -10, z: -11.6 }),
+          toYMap({ x: 9.8, y: -10, z: -4 }),
+          toYMap({ x: 16.0, y: -10, z: 10.1 }),
+          toYMap({ x: 3.9, y: -10, z: 8.7 }),
+          toYMap({ x: -4.2, y: -10, z: 17.9 }),
+          // [-2, -4, -2],
+          // [2, -4, -2],
+          // [2, -4, 2],
+          // [-2, -4, 2]
+        ]);
+      }
 
-  const [dragging, setDragging] = useState(false);
+      if (!ceiling.length) {
+        ceiling.push([
+          // triangle
+          toYMap({ x: 6.0, y: 10, z: 0 }),
+          toYMap({ x: -3.0, y: 10, z: 5.2 }),
+          toYMap({ x: -3.0, y: 10, z: -5.2 }),
+          // [-2.5, 4, 0.5],
+          // [0.5, 4, 2.5],
+          // [2.5, 4, -0.5],
+          // [-0.5, 4, -2.5]
+        ]);
+      }
+    }
+    provider.on("synced", sync);
+    return () => provider.off("synced", sync);
+  }, [provider, floor, ceiling]);
 
+  const [dragging, setDragging] = useState<[id: string, index: number] | undefined>(undefined);
+
+  const floorArray = floor.toArray(),
+    ceilingArray = ceiling.toArray();
   const lofted = useMemo(() => {
-    if (!floor.length || !ceiling.length)
+    if (!floorArray.length || !ceilingArray.length)
       return { vertices: new Float32Array(), indices: new Uint16Array() };
 
-    const { vertices, indices } = loft(floor.map(toVector3), ceiling.map(toVector3));
+    const { vertices, indices } = loft(floorArray.map(toVector3), ceilingArray.map(toVector3));
     return {
       vertices: new Float32Array([...vertices, ...zeroes].slice(0, zeroes.length)),
       indices: new Uint16Array([...indices, ...zeroes].slice(0, zeroes.length)),
     };
-  }, [floor.toArray(), ceiling.toArray()]);
+  }, [floorArray, ceilingArray]);
 
   const position = useRef<THREE.BufferAttribute>(null);
   const index = useRef<THREE.BufferAttribute>(null);
   useEffect(() => {
     if (!position.current || !index.current) return;
+
+    position.current.array = lofted.vertices;
     position.current.needsUpdate = true;
+
+    index.current.array = lofted.indices;
     index.current.needsUpdate = true;
   }, [lofted]);
 
@@ -107,7 +118,7 @@ function Scene() {
   const displayWireframe = useAtomValue(wireframe);
 
   return (
-    <>
+    <Canvas camera={{ position: [0, 30, 30] }}>
       {displayGrid && <gridHelper args={[50, 10]} />}
       {displayStats && <Stats />}
       <OrbitControls enableRotate={!dragging} />
@@ -154,43 +165,49 @@ function Scene() {
       )}
 
       <Plane
+        id="floor"
         path={floor.map(toVector3)}
         color="blue"
-        onPointerDown={() => setDragging(true)}
-        onMovePoint={(i, {x,y, z}) => {
-          if (!dragging) return;
+        dragging={dragging}
+        onStartDrag={i => setDragging(["floor", i])}
+        onMovePoint={(i, { x, y, z }) => {
+          if (dragging?.[0] !== "floor" || dragging?.[1] !== i) return;
+
           const point = floor.get(i);
           point.set("x", x);
           point.set("y", y);
           point.set("z", z);
         }}
         onAddPoint={(i, point) => {
-          setDragging(true);
+          setDragging(["floor", i]);
           floor.insert(i, [toYMap(point)]);
         }}
         onRemovePoint={i => floor.delete(i)}
-        onPointerUp={() => setDragging(false)}
+        onEndDrag={() => setDragging(undefined)}
       />
 
       <Plane
+        id="ceiling"
         path={ceiling.map(toVector3)}
         color="blue"
-        onPointerDown={() => setDragging(true)}
-        onMovePoint={(i, {x, y, z}) => {
-          if (!dragging) return;
+        dragging={dragging}
+        onStartDrag={i => setDragging(["ceiling", i])}
+        onMovePoint={(i, { x, y, z }) => {
+          if (dragging?.[0] !== "ceiling" || dragging?.[1] !== i) return;
+
           const point = ceiling.get(i);
           point.set("x", x);
           point.set("y", y);
           point.set("z", z);
         }}
         onAddPoint={(i, point) => {
-          setDragging(true);
+          setDragging(["ceiling", i]);
           ceiling.insert(i, [toYMap(point)]);
         }}
         onRemovePoint={i => ceiling.delete(i)}
-        onPointerUp={() => setDragging(false)}
+        onEndDrag={() => setDragging(undefined)}
       />
-    </>
+    </Canvas>
   );
 }
 

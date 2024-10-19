@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "~/style/style.css";
 
 export const metadata: Metadata = {
-  title: "Arcol"
+  title: "Arcol",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

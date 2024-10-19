@@ -10,7 +10,7 @@ import {
   connectVerts,
   isClockwise,
   raycast,
-  transformToZ0
+  transformToZ0,
 } from "~/lib/loft";
 import * as THREE from "three";
 import { classnames } from "~/lib/classnames";
@@ -33,7 +33,7 @@ const floor: THREE.Vector3[] = [
   new THREE.Vector3(16, -10, 10.1),
   new THREE.Vector3(3.9, -10, 8.7),
   new THREE.Vector3(-4.2, -10, 17.9),
-].map((v) => v.multiplyScalar(15));
+].map(v => v.multiplyScalar(15));
 
 const p1 = ceiling.map<THREE.Vector3Tuple>(v => [v.x, v.y, v.z]),
   p2 = floor.map<THREE.Vector3Tuple>(v => [v.x, v.y, v.z]);
@@ -110,9 +110,12 @@ export default function Home() {
         {connections.map((row, i) =>
           row.map((col, j) => (
             <div
-              key={i + "_" + j}
+              // biome-ignore lint/suspicious/noArrayIndexKey:
+              key={`${i}_${j}`}
               className={classnames(css.connection, {
+                // biome-ignore lint/style/noNonNullAssertion:
                 [css.green!]: connections[i][j],
+                // biome-ignore lint/style/noNonNullAssertion:
                 [css.purple!]: connections2[i][j],
               })}
             >

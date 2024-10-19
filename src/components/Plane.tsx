@@ -6,23 +6,36 @@ import * as THREE from "three";
 import { labels } from "~/lib/settings";
 
 interface Props {
+  id: string;
   path: THREE.Vector3[];
   color?: string;
-  onPointerDown(point: THREE.Vector3): void;
+  dragging?: [id: string, index: number];
+  onStartDrag(i: number): void;
   onAddPoint(i: number, point: THREE.Vector3): void;
   onRemovePoint(i: number): void;
   onMovePoint(i: number, point: THREE.Vector3): void;
-  onPointerUp(point: THREE.Vector3): void;
+  onEndDrag(i: number): void;
 }
 
 export default function Plane(props: Props) {
-  const { path, color, onPointerDown, onPointerUp, onAddPoint, onRemovePoint, onMovePoint } = props;
+  const {
+    id,
+    path,
+    color,
+    dragging,
+    onStartDrag,
+    onEndDrag,
+    onAddPoint,
+    onRemovePoint,
+    onMovePoint,
+  } = props;
 
-  const [preview, setPreview] = useState<THREE.Vector3 | null>(null);
+  const [preview, setPreview] = useState<[THREE.Vector3] | [THREE.Vector3, number] | null>(null);
 
   return (
     <>
       {path.map((point, i) => {
+        // biome-ignore lint/style/noNonNullAssertion: modulo prevents this from being undefined
         const prev = path.at((i - 1) % path.length)!;
 
         const v1 = prev.clone(),
@@ -35,25 +48,37 @@ export default function Plane(props: Props) {
         const rotation = new THREE.Quaternion();
         rotation.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); // Align the Y axis of the box with the direction
 
+        const isDragging = dragging?.[0] === id && dragging?.[1] === i && preview?.[1] === i;
+
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: no ID here
           <Fragment key={i}>
-            <Point
-              position={point}
-              color={color}
-              label={"" + i}
-              onPointerDown={e => {
-                if (e.altKey) return onRemovePoint(i);
-                onPointerDown(point);
-              }}
-              onPointerMove={e => onMovePoint(i, new THREE.Vector3(e.x, point.y, e.z))}
-              onPointerUp={() => onPointerUp(point)}
-            />
+            {isDragging ? null : (
+              <Point
+                position={point}
+                color={color}
+                label={`${i}`}
+                dragging={dragging?.[0] === id && dragging?.[1] === i}
+                onPointerDown={e => {
+                  e.stopPropagation();
+                  if (e.altKey) return onRemovePoint(i);
+                  onStartDrag(i);
+                }}
+                onPointerMove={(e, v) => {
+                  e.stopPropagation();
+                  onMovePoint(i, new THREE.Vector3(v.x, point.y, v.z));
+                }}
+                onPointerUp={() => onEndDrag(i)}
+              />
+            )}
             <mesh
               position={c}
               quaternion={rotation}
               visible={false}
               onPointerMove={e => {
+                if (dragging) return;
+                e.stopPropagation();
+
                 const v1 = prev.clone(),
                   v2 = point.clone();
 
@@ -68,23 +93,39 @@ export default function Plane(props: Props) {
 
                 // Calculate the snapped point
                 const closestPoint = new THREE.Vector3().copy(v1).add(AB.multiplyScalar(t));
-                setPreview(closestPoint);
+                setPreview([closestPoint, i]);
               }}
-              onPointerDown={e => {
-                if (!preview) return;
+              onPointerOut={e => {
                 e.stopPropagation();
                 setPreview(null);
-                onAddPoint(i, preview);
               }}
-              onPointerOut={() => setPreview(null)}
             >
               <boxGeometry args={[0.5, length - 1, 0.5]} />
             </mesh>
-            {preview ? (
-              <mesh position={preview}>
-                <sphereGeometry args={[0.5, 32, 16]} />
-                <meshStandardMaterial color={color} />
-              </mesh>
+            {preview?.[1] === i ? (
+              <Point
+                key={preview[1]}
+                label={`${i}`}
+                position={preview[0]}
+                onPointerDown={e => {
+                  if (e.altKey) return;
+                  e.stopPropagation();
+
+                  setPreview([preview[0], i]);
+                  onAddPoint(i, preview[0]);
+                }}
+                onPointerMove={(e, v) => {
+                  if (!isDragging) return;
+
+                  const next = new THREE.Vector3(v.x, preview[0].y, v.z);
+                  setPreview([next, i]);
+                  onMovePoint(i, next);
+                }}
+                onPointerUp={() => {
+                  setPreview(null);
+                  onEndDrag(i);
+                }}
+              />
             ) : null}
           </Fragment>
         );
@@ -102,15 +143,24 @@ interface PointProps {
   position: THREE.Vector3;
   label?: string;
   color?: string | number;
-  onPointerDown(e: ThreeEvent<PointerEvent>): void;
-  onPointerMove(vector: THREE.Vector3): void;
-  onPointerUp(e: ThreeEvent<PointerEvent>): void;
+  dragging?: boolean;
+  onPointerDown?(e: ThreeEvent<PointerEvent>): void;
+  onPointerMove?(e: ThreeEvent<PointerEvent>, v: THREE.Vector3): void;
+  onPointerUp?(e: ThreeEvent<PointerEvent>): void;
 }
 
 const raycaster = new THREE.Raycaster();
 
 function Point(props: PointProps) {
-  const { color = "blue", label, onPointerDown, onPointerMove, onPointerUp, ...rest } = props;
+  const {
+    color = "blue",
+    label,
+    dragging,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    ...rest
+  } = props;
   const { camera } = useThree();
 
   const displayLabels = useAtomValue(labels);
@@ -124,7 +174,7 @@ function Point(props: PointProps) {
         onPointerOver={() => setHover(true)}
         onPointerOut={() => setHover(false)}
         onPointerDown={e => {
-          e.stopPropagation();
+          if (!onPointerDown) return;
 
           const target = e.target as ThreeTarget;
           target?.setPointerCapture(e.pointerId);
@@ -132,6 +182,8 @@ function Point(props: PointProps) {
           onPointerDown(e);
         }}
         onPointerMove={e => {
+          if (!onPointerMove) return;
+
           const canvas = e.nativeEvent.target as HTMLCanvasElement;
           const { width, height } = canvas.getBoundingClientRect();
 
@@ -140,7 +192,7 @@ function Point(props: PointProps) {
             y = -(e.y / height) * 2 + 1;
 
           const intersection = castToYPlane(camera, new THREE.Vector2(x, y), rest.position.y);
-          if (intersection) onPointerMove(intersection);
+          if (intersection) onPointerMove(e, intersection);
         }}
         onPointerUp={e => {
           e.stopPropagation();
@@ -148,9 +200,12 @@ function Point(props: PointProps) {
           const target = e.target as ThreeTarget;
           target?.releasePointerCapture(e.pointerId);
 
-          onPointerUp(e);
+          if (onPointerUp) onPointerUp(e);
         }}
-        onPointerCancel={() => {}}
+        onPointerCancel={e => {
+          const target = e.target as ThreeTarget;
+          target?.releasePointerCapture(e.pointerId);
+        }}
       >
         <sphereGeometry args={[0.5, 32, 16]} />
         <meshStandardMaterial color={color} />

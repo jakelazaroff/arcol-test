@@ -14,13 +14,20 @@
     "formatter": {
       "arrowParentheses": "asNeeded",
       "quoteProperties": "asNeeded"
-    },
-    "linter": {
-      "rules": {
-        "style": {
-          "useSingleVarDecorator": "off"
-        }
+    }
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "useSingleVarDeclarator": "off",
+        "noNonNullAssertion": "warn"
       }
+      // "suspicious": {
+      //   "nullAss": {
+      //     "level": "warn",
+      //     "fix": "none"
+      //   }
+      // }
     }
   }
 }
