@@ -50,26 +50,18 @@ function Scene() {
           toYMap({ x: 16.0, y: -10, z: 10.1 }),
           toYMap({ x: 3.9, y: -10, z: 8.7 }),
           toYMap({ x: -4.2, y: -10, z: 17.9 }),
-          // [-2, -4, -2],
-          // [2, -4, -2],
-          // [2, -4, 2],
-          // [-2, -4, 2]
         ]);
       }
 
       if (!ceiling.length) {
         ceiling.push([
-          // triangle
           toYMap({ x: 6.0, y: 10, z: 0 }),
           toYMap({ x: -3.0, y: 10, z: 5.2 }),
           toYMap({ x: -3.0, y: 10, z: -5.2 }),
-          // [-2.5, 4, 0.5],
-          // [0.5, 4, 2.5],
-          // [2.5, 4, -0.5],
-          // [-0.5, 4, -2.5]
         ]);
       }
     }
+
     provider.on("synced", sync);
     return () => provider.off("synced", sync);
   }, [provider, floor, ceiling]);
@@ -95,8 +87,8 @@ function Scene() {
       />
       <pointLight position={[-100, -100, -100]} decay={0} intensity={Math.PI} />
 
-      <Cap path={ceiling.map(toVector3)} />
-      <Cap path={floor.map(toVector3)} />
+      <Cap path={ceiling.map(toVector3)} color="red" />
+      <Cap path={floor.map(toVector3)} color="red" />
 
       <Loft a={floor.map(toVector3)} b={ceiling.map(toVector3)} wireframe={displayWireframe} />
 

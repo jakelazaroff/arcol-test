@@ -7,20 +7,20 @@ import { L } from "vitest/dist/chunks/reporters.DAfKSDh5.js";
 export type Vector3 = { x: number; y: number; z: number };
 type Vec3Tuple = [x: number, y: number, z: number];
 
-class Path {
-  verts: [...Vec3Tuple, present: boolean][] = [];
+/** A small wrapper around a path that supports removing elements while keeping the indices consistent. */
+class Path<T> {
+  array: Array<{ value: T; present: boolean }> = [];
 
-  constructor(verts: Vector3[]) {
-    this.verts = verts.map<[...Vec3Tuple, boolean]>(({ x, y, z }) => [x, y, z, true]);
+  constructor(verts: T[]) {
+    this.array = verts.map(value => ({ value, present: true }));
   }
 
-  at(i: number): vec3 {
-    const [x, y, z] = this.verts[i];
-    return [x, y, z];
+  at(i: number): T {
+    return this.array[i].value;
   }
 
   remove(i: number) {
-    this.verts[i][3] = false;
+    this.array[i].present = false;
   }
 
   next(i: number) {
@@ -28,18 +28,25 @@ class Path {
   }
 
   prev(i: number) {
-    return this._find(i, this.verts.length - 1);
+    // adding array.length - 1 is equivalent to moving backwards through the array
+    return this._find(i, this.array.length - 1);
   }
 
-  _find(i: number, inc: number): [number, vec3] | undefined {
-    let current = (i + inc) % this.verts.length;
+  _find(i: number, inc: number): [number, T] | undefined {
+    let current = (i + inc) % this.array.length;
     while (current !== i) {
-      const vert = this.verts.at(current);
-      if (!vert) return;
-      const [x, y, z, present] = vert;
-      if (present) return [current, [x, y, z]];
+      const item = this.array.at(current);
+      if (!item) return;
+      if (item.present) return [current, item.value];
 
-      current = (current + inc) % this.verts.length;
+      current = (current + inc) % this.array.length;
+    }
+  }
+
+  *[Symbol.iterator]() {
+    for (const item of this.array) {
+      if (!item.present) continue;
+      yield item.value;
     }
   }
 }
@@ -51,21 +58,24 @@ interface Tip {
 }
 
 export function triangulate(vertices: Vector3[]) {
-  const path = new Path(vertices);
+  const path = new Path(vertices.map<Vec3Tuple>(({ x, y, z }) => [x, y, z]));
 
-  // const reflexes = findReflexVertices(verts);
+  // find all potential tips
   const tips: Tip[] = vertices.map((_, i) => getTip(path, i));
-
   const tris: [number, number, number][] = [];
+
   while (tris.length < vertices.length - 2) {
     // find the ear tip with the smallest angle
     const tip = tips.filter(tip => tip.ear).sort((a, b) => a.angle - b.angle)[0];
 
+    // push the verts into the tris array
     tris.push(tip.verts);
 
+    // mark as no longer a tip and remove the vertex from the path
     tip.ear = false;
     path.remove(tip.verts[1]);
 
+    // recompute the tip status of the neighboring vertices
     tips[tip.verts[0]] = getTip(path, tip.verts[0]);
     tips[tip.verts[2]] = getTip(path, tip.verts[2]);
   }
@@ -73,7 +83,8 @@ export function triangulate(vertices: Vector3[]) {
   return tris;
 }
 
-function getTip(path: Path, i: number): Tip {
+function getTip(path: Path<vec3>, i: number): Tip {
+  // find the neighboring points
   const [prev, v1] = path.prev(i)!,
     v2 = path.at(i)!,
     [next, v3] = path.next(i)!;
@@ -88,7 +99,7 @@ function getTip(path: Path, i: number): Tip {
   // if the angle is obtuse, it can't form an ear tip
   if (angle >= Math.PI) return { verts, angle, ear: false };
 
-  for (const [x, y, z] of path.verts) {
+  for (const [x, y, z] of path) {
     const p: vec3 = [x, y, z];
     if (vec3.equals(v1, p)) continue;
     if (vec3.equals(v2, p)) continue;
