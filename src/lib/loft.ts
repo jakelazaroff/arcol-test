@@ -1,8 +1,8 @@
-import { vec3, mat4 } from "gl-matrix";
+import { mat4, vec3 } from "gl-matrix";
 
 // https://micsymposium.org/mics2018/proceedings/MICS_2018_paper_65.pdf
 
-export type Vector3 = { x: number, y: number, z: number };
+export type Vector3 = { x: number; y: number; z: number };
 type Vector3Tuple = [x: number, y: number, z: number];
 
 export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; indices: number[] } {
@@ -77,7 +77,10 @@ export function transformToZ0(path: Vector3Tuple[]): void {
   const angle = Math.acos(vec3.dot(normal, targetNormal));
 
   // if the path is already cpplanar with z = 0, zero out the z component and return
-  if (vec3.length(rotationAxis) === 0) return path.forEach(v => (v[2] = 0));
+  if (vec3.length(rotationAxis) === 0) {
+    for (const v of path) v[2] = 0;
+    return;
+  }
 
   // create rotation matrix and rotate all vertices
   const rotationMatrix = mat4.create();
@@ -131,6 +134,7 @@ export function raycast(pS: Vector3Tuple[]) {
   // iterate through each vertex
   for (let i = 0; i < pS.length; i++) {
     // get the coordinates of the current and next vertex, wrapping around to 0
+    // biome-ignore lint/style/noNonNullAssertion: modulo prevents it from being undefined
     const [x1, y1] = pS.at((i - 1) % pS.length)!,
       [x2, y2] = pS[i];
 
@@ -264,5 +268,5 @@ export function between(n1: number, nb: number, n2: number) {
   if (nb === n1 || nb === n2) return true;
 
   if (n1 < n2) return n1 < nb && nb < n2;
-  else return n1 < nb || nb < n2;
+  return n1 < nb || nb < n2;
 }

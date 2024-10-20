@@ -22,12 +22,6 @@
         "useSingleVarDeclarator": "off",
         "noNonNullAssertion": "warn"
       }
-      // "suspicious": {
-      //   "nullAss": {
-      //     "level": "warn",
-      //     "fix": "none"
-      //   }
-      // }
     }
   }
 }

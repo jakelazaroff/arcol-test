@@ -1,9 +1,10 @@
 "use client";
 
-import { type CSSProperties, useCallback } from "react";
+import GUI from "lil-gui";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 
-import css from "./page.module.css";
-
+import { classnames } from "~/lib/classnames";
 import {
   center,
   connectAcrossRays,
@@ -12,8 +13,9 @@ import {
   raycast,
   transformToZ0,
 } from "~/lib/loft";
-import * as THREE from "three";
-import { classnames } from "~/lib/classnames";
+import { triangulate } from "~/lib/triangulate";
+
+import css from "./page.module.css";
 
 const ceiling: THREE.Vector3[] = [
   new THREE.Vector3(6, 10, 0),
@@ -60,11 +62,50 @@ const connections = connectVerts(pL, pS, rays);
 const connections2: typeof connections = JSON.parse(JSON.stringify(connections));
 connectAcrossRays(connections2);
 
-export default function Home() {
-  const ref = useCallback((canvas: HTMLCanvasElement | null) => {
-    const ctx = canvas?.getContext("2d");
-    if (!ctx) return;
+let settings = {
+  axes: true,
+  rays: true,
+  matrix: true,
+  numbers: true,
+  outlines: true,
+  connections: true,
+  triangles: true,
+  shape_1: true,
+  shape_2: true,
+};
 
+if (global.localStorage) {
+  const stored = JSON.parse(localStorage.getItem("debug_settings") || "null");
+  if (stored) settings = stored;
+}
+
+export default function Debug() {
+  const [matrix, setMatrix] = useState(false);
+  useEffect(() => {
+    setMatrix(settings.matrix);
+
+    const gui = new GUI();
+    gui.add(settings, "axes");
+    gui.add(settings, "rays");
+    gui.add(settings, "matrix").onChange((v: boolean) => setMatrix(v));
+    gui.add(settings, "numbers");
+    gui.add(settings, "outlines");
+    gui.add(settings, "connections");
+    gui.add(settings, "triangles");
+
+    const folder = gui.addFolder("shapes");
+    folder.add(settings, "shape_1");
+    folder.add(settings, "shape_2");
+
+    gui.onChange(() => {
+      if (ctx.current) draw(ctx.current);
+      localStorage.setItem("debug_settings", JSON.stringify(settings));
+    });
+
+    return () => gui.destroy();
+  }, []);
+
+  const draw = useCallback((ctx: CanvasRenderingContext2D) => {
     const w = ctx.canvas.clientWidth,
       h = ctx.canvas.clientHeight;
 
@@ -77,53 +118,81 @@ export default function Home() {
     ctx.translate(w / 2, h / 2);
     ctx.scale(1, -1);
 
-    // draw vertical axis
-    ctx.moveTo(0, h / 2);
-    ctx.lineTo(0, h / -2);
+    if (settings.axes) {
+      // draw vertical axis
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(0, h / -2);
 
-    // draw horizontal axis
-    ctx.moveTo(w / -2, 0);
-    ctx.lineTo(w / 2, 0);
+      // draw horizontal axis
+      ctx.moveTo(w / -2, 0);
+      ctx.lineTo(w / 2, 0);
 
-    ctx.stroke();
-
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "orange";
-    for (const ray of rays) {
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(ray) * 1000, Math.sin(ray) * 1000);
       ctx.stroke();
     }
 
-    drawConnections(ctx, connections2, pL, pS, "magenta");
-    drawConnections(ctx, connections, pL, pS, "lime");
+    console.log(triangulate(floor));
+    if (settings.triangles) {
+      if (settings.shape_1) drawTris(ctx, p1, triangulate(ceiling), "black");
+      if (settings.shape_2) drawTris(ctx, p2, triangulate(floor), "black");
+    }
 
-    drawShape(ctx, p1, "red");
-    drawShape(ctx, p2, "blue");
+    if (settings.rays) {
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "orange";
+      for (const ray of rays) {
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(Math.cos(ray) * 1000, Math.sin(ray) * 1000);
+        ctx.stroke();
+      }
+    }
+
+    if (settings.connections) {
+      drawConnections(ctx, connections2, pL, pS, "magenta");
+      drawConnections(ctx, connections, pL, pS, "lime");
+    }
+
+    if (settings.outlines) {
+      if (settings.shape_1) drawShape(ctx, p1, "red");
+      if (settings.shape_2) drawShape(ctx, p2, "blue");
+    }
   }, []);
+
+  const ctx = useRef<CanvasRenderingContext2D | null>(null);
+  const ref = useCallback(
+    (canvas: HTMLCanvasElement | null) => {
+      const context = canvas?.getContext("2d");
+      if (!context) return;
+
+      ctx.current = context;
+      draw(context);
+    },
+    [draw],
+  );
 
   return (
     <div className={css.wrapper}>
       <canvas style={{ width: "100%", height: "100%" }} ref={ref} />
-      <div className={css.table} style={{ "--columns": pS.length } as CSSProperties}>
-        {connections.map((row, i) =>
-          row.map((col, j) => (
-            <div
-              // biome-ignore lint/suspicious/noArrayIndexKey:
-              key={`${i}_${j}`}
-              className={classnames(css.connection, {
-                // biome-ignore lint/style/noNonNullAssertion:
-                [css.green!]: connections[i][j],
-                // biome-ignore lint/style/noNonNullAssertion:
-                [css.purple!]: connections2[i][j],
-              })}
-            >
-              {i}, {j}
-            </div>
-          )),
-        )}
-      </div>
+      {matrix ? (
+        <div className={css.table} style={{ "--columns": pS.length } as CSSProperties}>
+          {connections.map((row, i) =>
+            row.map((_, j) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey:
+                key={`${i}_${j}`}
+                className={classnames(css.connection, {
+                  // biome-ignore lint/style/noNonNullAssertion:
+                  [css.green!]: connections[i][j],
+                  // biome-ignore lint/style/noNonNullAssertion:
+                  [css.purple!]: connections2[i][j],
+                })}
+              >
+                {i}, {j}
+              </div>
+            )),
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -131,7 +200,7 @@ export default function Home() {
 function drawShape(ctx: CanvasRenderingContext2D, path: THREE.Vector3Tuple[], color: string) {
   ctx.beginPath();
 
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 4;
   ctx.strokeStyle = color;
   for (const [x, y] of path) {
     ctx.lineTo(x, y);
@@ -146,14 +215,16 @@ function drawShape(ctx: CanvasRenderingContext2D, path: THREE.Vector3Tuple[], co
     ctx.ellipse(x, y, 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.scale(1, -1);
-    ctx.font = "bold 16px sans-serif";
-    ctx.fillStyle = "black";
-    ctx.strokeStyle = "white";
-    ctx.strokeText(`${i}`, x, -y - 8);
-    ctx.fillText(`${i}`, x, -y - 8);
-    ctx.scale(1, -1);
-    i += 1;
+    if (settings.numbers) {
+      ctx.scale(1, -1);
+      ctx.font = "bold 16px sans-serif";
+      ctx.fillStyle = "black";
+      ctx.strokeStyle = "white";
+      ctx.strokeText(`${i}`, x, -y - 8);
+      ctx.fillText(`${i}`, x, -y - 8);
+      ctx.scale(1, -1);
+      i += 1;
+    }
   }
 }
 
@@ -178,5 +249,27 @@ function drawConnections(
       ctx.lineTo(x2, y2);
       ctx.stroke();
     }
+  }
+}
+
+function drawTris(
+  ctx: CanvasRenderingContext2D,
+  vertices: THREE.Vector3Tuple[],
+  tris: [number, number, number][],
+  color: string,
+) {
+  for (const tri of tris) {
+    const [x1, y1] = vertices[tri[0]],
+      [x2, y2] = vertices[tri[1]],
+      [x3, y3] = vertices[tri[2]];
+
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.closePath();
+    ctx.stroke();
   }
 }
