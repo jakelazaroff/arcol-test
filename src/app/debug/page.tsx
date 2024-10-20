@@ -130,7 +130,6 @@ export default function Debug() {
       ctx.stroke();
     }
 
-    console.log(triangulate(floor));
     if (settings.triangles) {
       if (settings.shape_1) drawTris(ctx, p1, triangulate(ceiling), "black");
       if (settings.shape_2) drawTris(ctx, p2, triangulate(floor), "black");

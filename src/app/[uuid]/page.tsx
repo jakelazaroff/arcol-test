@@ -6,27 +6,15 @@ import { YDocProvider, useArray, useYjsProvider } from "@y-sweet/react";
 import { Provider, useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import * as THREE from "three";
+import type * as THREE from "three";
 import type * as Y from "yjs";
 
+import Cap from "~/components/Cap";
+import Loft from "~/components/Loft";
 import Plane from "~/components/Plane";
-import { loft } from "~/lib/loft";
 import gui, { grid, stats, wireframe } from "~/lib/settings";
 import { store } from "~/lib/settings";
 import { toVector3, toYMap } from "~/lib/yjs";
-
-function Cap(props: { path: THREE.Vector3Tuple[]; color?: string | number }) {
-  const { path, color = "pink" } = props;
-
-  return (
-    <mesh rotation={[0, 0, 0]} position={[0, path[0][1], 0]}>
-      <shapeGeometry args={[new THREE.Shape(path.map(([x, , z]) => new THREE.Vector2(x, z))), 0]} />
-      <meshStandardMaterial color={color} flatShading side={THREE.DoubleSide} />
-    </mesh>
-  );
-}
-
-const zeroes = new Array(600).fill(0);
 
 export default function Home({ params }: { params: { uuid: string } }) {
   useEffect(() => gui(), []);
@@ -88,31 +76,6 @@ function Scene() {
 
   const [dragging, setDragging] = useState<[id: string, index: number] | undefined>(undefined);
 
-  const floorArray = floor.toArray(),
-    ceilingArray = ceiling.toArray();
-  const lofted = useMemo(() => {
-    if (!floorArray.length || !ceilingArray.length)
-      return { vertices: new Float32Array(), indices: new Uint16Array() };
-
-    const { vertices, indices } = loft(floorArray.map(toVector3), ceilingArray.map(toVector3));
-    return {
-      vertices: new Float32Array([...vertices, ...zeroes].slice(0, zeroes.length)),
-      indices: new Uint16Array([...indices, ...zeroes].slice(0, zeroes.length)),
-    };
-  }, [floorArray, ceilingArray]);
-
-  const position = useRef<THREE.BufferAttribute>(null);
-  const index = useRef<THREE.BufferAttribute>(null);
-  useEffect(() => {
-    if (!position.current || !index.current) return;
-
-    position.current.array = lofted.vertices;
-    position.current.needsUpdate = true;
-
-    index.current.array = lofted.indices;
-    index.current.needsUpdate = true;
-  }, [lofted]);
-
   const displayStats = useAtomValue(stats);
   const displayGrid = useAtomValue(grid);
   const displayWireframe = useAtomValue(wireframe);
@@ -132,37 +95,10 @@ function Scene() {
       />
       <pointLight position={[-100, -100, -100]} decay={0} intensity={Math.PI} />
 
-      {/* <Cap path={ceiling} />
-      <Cap path={floor} /> */}
+      <Cap path={ceiling.map(toVector3)} />
+      <Cap path={floor.map(toVector3)} />
 
-      {Boolean(lofted.vertices.length) && (
-        <mesh>
-          <bufferGeometry>
-            <bufferAttribute
-              ref={position}
-              attach="attributes-position"
-              array={lofted.vertices}
-              count={lofted.vertices.length / 3}
-              itemSize={3}
-              needsUpdate
-            />
-            <bufferAttribute
-              ref={index}
-              attach="index"
-              array={lofted.indices}
-              count={lofted.indices.length}
-              itemSize={1}
-              needsUpdate
-            />
-          </bufferGeometry>
-          <meshStandardMaterial
-            color="pink"
-            flatShading
-            side={THREE.DoubleSide}
-            wireframe={displayWireframe}
-          />
-        </mesh>
-      )}
+      <Loft a={floor.map(toVector3)} b={ceiling.map(toVector3)} wireframe={displayWireframe} />
 
       <Plane
         id="floor"
