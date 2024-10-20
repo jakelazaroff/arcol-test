@@ -8,6 +8,7 @@ export const stats = atomWithStorage("stats", false, undefined, { getOnInit: tru
 export const grid = atomWithStorage("grid", false, undefined, { getOnInit: true });
 export const labels = atomWithStorage("labels", false, undefined, { getOnInit: true });
 export const wireframe = atomWithStorage("wireframe", false, undefined, { getOnInit: true });
+export const caps = atomWithStorage("caps", true, undefined, { getOnInit: true });
 
 export default function gui() {
   const gui = new GUI();
@@ -24,6 +25,9 @@ export default function gui() {
   gui
     .add({ wireframe: store.get(wireframe) }, "wireframe")
     .onChange((value: boolean) => store.set(wireframe, () => value));
+  gui
+    .add({ caps: store.get(caps) }, "caps")
+    .onChange((value: boolean) => store.set(caps, () => value));
 
   return () => gui.destroy();
 }

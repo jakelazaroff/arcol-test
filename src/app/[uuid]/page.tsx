@@ -4,7 +4,7 @@ import { OrbitControls, Stats } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { YDocProvider, useArray, useYjsProvider } from "@y-sweet/react";
 import { Provider, useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import type * as THREE from "three";
 import type * as Y from "yjs";
@@ -12,7 +12,7 @@ import type * as Y from "yjs";
 import Cap from "~/components/Cap";
 import Loft from "~/components/Loft";
 import Plane from "~/components/Plane";
-import gui, { grid, stats, wireframe } from "~/lib/settings";
+import gui, { caps, grid, stats, wireframe } from "~/lib/settings";
 import { store } from "~/lib/settings";
 import { toVector3, toYMap } from "~/lib/yjs";
 
@@ -71,6 +71,7 @@ function Scene() {
   const displayStats = useAtomValue(stats);
   const displayGrid = useAtomValue(grid);
   const displayWireframe = useAtomValue(wireframe);
+  const displayCaps = useAtomValue(caps);
 
   return (
     <Canvas camera={{ position: [0, 30, 30] }}>
@@ -87,8 +88,12 @@ function Scene() {
       />
       <pointLight position={[-100, -100, -100]} decay={0} intensity={Math.PI} />
 
-      <Cap path={ceiling.map(toVector3)} color="red" />
-      <Cap path={floor.map(toVector3)} color="red" />
+      {displayCaps ? (
+        <>
+          <Cap path={ceiling.map(toVector3)} color="red" />
+          <Cap path={floor.map(toVector3)} color="red" />
+        </>
+      ) : null}
 
       <Loft a={floor.map(toVector3)} b={ceiling.map(toVector3)} wireframe={displayWireframe} />
 
