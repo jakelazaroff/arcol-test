@@ -19,7 +19,7 @@ import css from "./page.module.css";
 
 const ceiling: THREE.Vector3[] = [
   new THREE.Vector3(6, 10, 0),
-  new THREE.Vector3(0.8730043437764863, 10, 2.962264156929141),
+  // new THREE.Vector3(2, 10, 4),
   new THREE.Vector3(-3, 10, 5.2),
   new THREE.Vector3(-3, 10, -5.2),
 ].map(v3 => v3.multiplyScalar(10));
