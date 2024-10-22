@@ -15,18 +15,23 @@ export default function gui() {
   gui.close();
   gui
     .add({ stats: store.get(stats) }, "stats")
+    .name("Stats")
     .onChange((value: boolean) => store.set(stats, () => value));
   gui
     .add({ grid: store.get(grid) }, "grid")
+    .name("Grid")
     .onChange((value: boolean) => store.set(grid, () => value));
   gui
     .add({ labels: store.get(labels) }, "labels")
+    .name("Labels")
     .onChange((value: boolean) => store.set(labels, () => value));
   gui
     .add({ wireframe: store.get(wireframe) }, "wireframe")
+    .name("Wireframe")
     .onChange((value: boolean) => store.set(wireframe, () => value));
   gui
     .add({ caps: store.get(caps) }, "caps")
+    .name("Caps")
     .onChange((value: boolean) => store.set(caps, () => value));
 
   return () => gui.destroy();

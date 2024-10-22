@@ -65,9 +65,9 @@ connectAcrossRays(connections2);
 let settings = {
   axes: true,
   rays: true,
-  matrix: true,
-  numbers: true,
+  labels: true,
   outlines: true,
+  table: true,
   connections: true,
   triangles: true,
   shape_1: true,
@@ -76,26 +76,31 @@ let settings = {
 
 if (global.localStorage) {
   const stored = JSON.parse(localStorage.getItem("debug_settings") || "null");
-  if (stored) settings = stored;
+  if (stored) settings = { ...settings, ...stored };
 }
 
 export default function Debug() {
   const [matrix, setMatrix] = useState(false);
   useEffect(() => {
-    setMatrix(settings.matrix);
+    setMatrix(settings.table);
 
     const gui = new GUI();
-    gui.add(settings, "axes");
-    gui.add(settings, "rays");
-    gui.add(settings, "matrix").onChange((v: boolean) => setMatrix(v));
-    gui.add(settings, "numbers");
-    gui.add(settings, "outlines");
-    gui.add(settings, "connections");
-    gui.add(settings, "triangles");
+    gui.add(settings, "axes").name("Axes");
+    gui.add(settings, "rays").name("Rays");
+    gui.add(settings, "labels").name("Labels");
+    gui.add(settings, "outlines").name("Outlines");
+    gui
+      .add(settings, "table")
+      .name("Table")
+      .onChange((v: boolean) => setMatrix(v));
+    gui.add(settings, "connections").name("Connections");
+    gui.add(settings, "triangles").name("Triangles");
 
-    const folder = gui.addFolder("shapes");
-    folder.add(settings, "shape_1");
-    folder.add(settings, "shape_2");
+    const shape1 = gui.addFolder("Shape 1");
+    shape1.add(settings, "shape_1").name("Visible");
+
+    const shape2 = gui.addFolder("Shape 2");
+    shape2.add(settings, "shape_2").name("Visible");
 
     gui.onChange(() => {
       if (ctx.current) draw(ctx.current);
@@ -214,7 +219,7 @@ function drawShape(ctx: CanvasRenderingContext2D, path: THREE.Vector3Tuple[], co
     ctx.ellipse(x, y, 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (settings.numbers) {
+    if (settings.labels) {
       ctx.scale(1, -1);
       ctx.font = "bold 16px sans-serif";
       ctx.fillStyle = "black";

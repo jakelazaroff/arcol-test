@@ -1,5 +1,4 @@
 import { vec3 } from "gl-matrix";
-import { L } from "vitest/dist/chunks/reporters.DAfKSDh5.js";
 
 // https://arxiv.org/pdf/1212.6038
 // https://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
