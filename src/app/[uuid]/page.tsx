@@ -66,6 +66,7 @@ function Scene() {
     return () => provider.off("synced", sync);
   }, [provider, floor, ceiling]);
 
+  const data = { floor, ceiling };
   const [dragging, setDragging] = useState<[id: string, index: number] | undefined>(undefined);
 
   const displayStats = useAtomValue(stats);
@@ -94,52 +95,32 @@ function Scene() {
           <Cap path={floor.map(toVector3)} color="red" />
         </>
       ) : null}
-
       <Loft a={floor.map(toVector3)} b={ceiling.map(toVector3)} wireframe={displayWireframe} />
 
-      <Plane
-        id="floor"
-        path={floor.map(toVector3)}
-        color="blue"
-        dragging={dragging}
-        onStartDrag={i => setDragging(["floor", i])}
-        onMovePoint={(i, { x, y, z }) => {
-          if (dragging?.[0] !== "floor" || dragging?.[1] !== i) return;
+      {Object.entries(data).map(([id, path]) => (
+        <Plane
+          key={id}
+          id={id}
+          path={path.map(toVector3)}
+          color="blue"
+          dragging={dragging}
+          onStartDrag={i => setDragging([id, i])}
+          onMovePoint={(i, { x, y, z }) => {
+            if (dragging?.[0] !== id || dragging?.[1] !== i) return;
 
-          const point = floor.get(i);
-          point.set("x", x);
-          point.set("y", y);
-          point.set("z", z);
-        }}
-        onAddPoint={(i, point) => {
-          setDragging(["floor", i]);
-          floor.insert(i, [toYMap(point)]);
-        }}
-        onRemovePoint={i => floor.delete(i)}
-        onEndDrag={() => setDragging(undefined)}
-      />
-
-      <Plane
-        id="ceiling"
-        path={ceiling.map(toVector3)}
-        color="blue"
-        dragging={dragging}
-        onStartDrag={i => setDragging(["ceiling", i])}
-        onMovePoint={(i, { x, y, z }) => {
-          if (dragging?.[0] !== "ceiling" || dragging?.[1] !== i) return;
-
-          const point = ceiling.get(i);
-          point.set("x", x);
-          point.set("y", y);
-          point.set("z", z);
-        }}
-        onAddPoint={(i, point) => {
-          setDragging(["ceiling", i]);
-          ceiling.insert(i, [toYMap(point)]);
-        }}
-        onRemovePoint={i => ceiling.delete(i)}
-        onEndDrag={() => setDragging(undefined)}
-      />
+            const point = path.get(i);
+            point.set("x", x);
+            point.set("y", y);
+            point.set("z", z);
+          }}
+          onAddPoint={(i, point) => {
+            setDragging([id, i]);
+            path.insert(i, [toYMap(point)]);
+          }}
+          onRemovePoint={i => path.delete(i)}
+          onEndDrag={() => setDragging(undefined)}
+        />
+      ))}
     </Canvas>
   );
 }
