@@ -14,10 +14,7 @@ interface Props {
 export default function Loft(props: Props) {
   const { a, b, color = "pink", wireframe } = props;
 
-  const { vertices, indices } = useMemo(() => {
-    if (!a.length || !b.length) return { vertices: [], indices: [] };
-    return loft(a, b);
-  }, [a, b]);
+  const { vertices, indices } = useMemo(() => loft(a, b), [a, b]);
 
   return (
     <BufferGeoemtry vertices={vertices} indices={indices} color={color} wireframe={wireframe} />

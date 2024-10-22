@@ -14,11 +14,15 @@ const zeroes = new Array(PADDING).fill(0);
 export default function BufferGeoemtry(props: Props) {
   const { vertices, indices, color = "pink", wireframe } = props;
 
+  // create TypedArrays for both vertices and indices
   const v = useMemo(() => new Float32Array([...vertices, ...zeroes].slice(0, PADDING)), [vertices]);
   const i = useMemo(() => new Uint16Array([...indices, ...zeroes].slice(0, PADDING)), [indices]);
 
+  // update position and index arrays
   const position = useRef<THREE.BufferAttribute>(null);
   const index = useRef<THREE.BufferAttribute>(null);
+
+  // update buffer attributes when vertices or indices change
   useEffect(() => {
     if (!position.current || !index.current) return;
 

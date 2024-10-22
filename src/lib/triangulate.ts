@@ -14,32 +14,36 @@ class Path<T> {
     this.array = verts.map(value => ({ value, present: true }));
   }
 
+  /** Return the item at index `i`. */
   at(i: number): T {
     return this.array[i].value;
   }
 
+  /** Remove an item from the path. */
   remove(i: number) {
     this.array[i].present = false;
   }
 
+  /** Find the next item that hasn't been removed. */
   next(i: number) {
     return this._find(i, 1);
   }
 
+  /** Find the previous item that hasn't been removed. */
   prev(i: number) {
     // adding array.length - 1 is equivalent to moving backwards through the array
     return this._find(i, this.array.length - 1);
   }
 
   _find(i: number, inc: number): [number, T] | undefined {
-    let current = (i + inc) % this.array.length;
-    while (current !== i) {
-      const item = this.array.at(current);
-      if (!item) return;
-      if (item.present) return [current, item.value];
-
+    let current = i;
+    do {
+      // add increment, wrapping around to the beginning of the array if necessary
       current = (current + inc) % this.array.length;
-    }
+
+      const item = this.array.at(current);
+      if (item?.present) return [current, item.value];
+    } while (current !== i);
   }
 
   *[Symbol.iterator]() {
@@ -56,6 +60,7 @@ interface Tip {
   ear: boolean;
 }
 
+/** Given an array of vertices forming a path, return an array of vertex indices triangulating the path. */
 export function triangulate(vertices: Vector3[]) {
   const path = new Path(vertices.map<Vec3Tuple>(({ x, y, z }) => [x, y, z]));
 
@@ -82,11 +87,12 @@ export function triangulate(vertices: Vector3[]) {
   return tris;
 }
 
+/** Given a path and the index of a vertex, get the tip status of the triangle formed by it and the two adjacent vertices */
 function getTip(path: Path<vec3>, i: number): Tip {
   // find the neighboring points
-  const [prev, v1] = path.prev(i)!,
-    v2 = path.at(i)!,
-    [next, v3] = path.next(i)!;
+  const [prev, v1] = path.prev(i) as [number, vec3],
+    v2 = path.at(i) as vec3,
+    [next, v3] = path.next(i) as [number, vec3];
 
   // calculate the angle between the points
   const a = vec3.sub(vec3.create(), v1, v2),
@@ -98,11 +104,15 @@ function getTip(path: Path<vec3>, i: number): Tip {
   // if the angle is obtuse, it can't form an ear tip
   if (angle >= Math.PI) return { verts, angle, ear: false };
 
-  for (const [x, y, z] of path) {
-    const p: vec3 = [x, y, z];
+  // if any other point is inside the triangle, it can't be an ear tip
+  // TODO: only check reflex vertices (vertices that "point in", creating concave subpaths)
+  for (const p of path) {
+    // skip the points that make up the triangle
     if (vec3.equals(v1, p)) continue;
     if (vec3.equals(v2, p)) continue;
     if (vec3.equals(v3, p)) continue;
+
+    // for each edge of the triangle, check whether the point is on the same side as the remaining vertex
     const inside =
       isSameSide(v1, v2, v3, p) && isSameSide(v2, v3, v1, p) && isSameSide(v3, v1, v2, p);
 
@@ -112,52 +122,23 @@ function getTip(path: Path<vec3>, i: number): Tip {
   return { verts, angle, ear: true };
 }
 
-/** Given a path, find all vertices that "point in", creating concave subsections */
-function findReflexVertices(path: Vec3Tuple[]) {
-  const reflexes: Vec3Tuple[] = [];
-
-  for (let i = 0; i < path.length; i++) {
-    // find the adjacent points
-    const v1 = path[clamp(i - 1, path.length)],
-      v2 = path[i],
-      v3 = path[clamp(i + 1, path.length)];
-
-    // calculate the angle between the points
-    const a = vec3.sub(vec3.create(), v1, v2),
-      b = vec3.sub(vec3.create(), v3, v2),
-      theta = vec3.angle(a, b);
-
-    // if the angle is greater than pi, it's a reflex vertex
-    if (theta >= Math.PI) reflexes.push(v2);
-  }
-
-  return reflexes;
-}
-
-// Function to check if a point is on the same side of the edge as the triangle's third vertex
+/** Check whether a point is on the same side of the edge as the triangle's third vertex. */
 function isSameSide(a: vec3, b: vec3, p1: vec3, p2: vec3): boolean {
   const cp1 = vec3.create();
   const cp2 = vec3.create();
   const edge = vec3.create();
 
-  vec3.subtract(edge, b, a); // edge vector: b - a
+  // edge vector: b - a
+  vec3.subtract(edge, b, a);
 
-  // Cross product of edge and vector (p1 - a)
+  // cross product of edge and vector (p1 - a)
   vec3.subtract(cp1, p1, a);
   vec3.cross(cp1, edge, cp1);
 
-  // Cross product of edge and vector (p2 - a)
+  // cross product of edge and vector (p2 - a)
   vec3.subtract(cp2, p2, a);
   vec3.cross(cp2, edge, cp2);
 
-  // Check if cp1 and cp2 are pointing in the same direction (positive dot product)
+  // if the dot product of cp1 and cp2 is positive, the vectors are pointing in the same direction
   return vec3.dot(cp1, cp2) >= 0;
-}
-
-function clamp(i: number, range: number) {
-  const clamped = i % range, // normalize into range [-range, range]
-    positive = clamped + range, // translate into range [0, 2range]
-    result = positive % range; // normalize into range [0, range]
-
-  return result;
 }

@@ -1,9 +1,9 @@
 import { Text } from "@react-three/drei";
 import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
-import { Fragment, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import * as THREE from "three";
-import { labels } from "~/lib/settings";
+import { edges, labels } from "~/lib/settings";
 
 interface Props {
   id: string;
@@ -31,23 +31,36 @@ export default function Plane(props: Props) {
   } = props;
 
   const [preview, setPreview] = useState<[THREE.Vector3] | [THREE.Vector3, number] | null>(null);
+  const displayEdges = useAtomValue(edges);
+  const edgeColor = useMemo(
+    () => new THREE.Color(color).lerp(new THREE.Color("white"), 0.25),
+    [color],
+  );
 
   return (
     <>
       {path.map((point, i) => {
+        // get the previous point in the path, for use in detecting clicks along the edges
         // biome-ignore lint/style/noNonNullAssertion: modulo prevents this from being undefined
         const prev = path.at((i - 1) % path.length)!;
 
         const v1 = prev.clone(),
           v2 = point.clone();
 
+        // calculate the center point between the previous and current points
         const c = new THREE.Vector3().addVectors(v1, v2).multiplyScalar(0.5);
+
+        // calculate the length between those points
         const length = v1.distanceTo(v2);
+
+        // calculate a unit vector between the points
         const direction = new THREE.Vector3().subVectors(v2, v1).normalize();
 
+        // align the y axis of the box with the direction
         const rotation = new THREE.Quaternion();
-        rotation.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction); // Align the Y axis of the box with the direction
+        rotation.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
 
+        // whether the user is dragging the current point
         const isDragging = dragging?.[0] === id && dragging?.[1] === i && preview?.[1] === i;
 
         return (
@@ -74,25 +87,27 @@ export default function Plane(props: Props) {
             <mesh
               position={c}
               quaternion={rotation}
-              visible={false}
+              visible={displayEdges}
               onPointerMove={e => {
+                // if the user is dragging, the preview dot mesh itself is responsible for updating the preview
                 if (dragging) return;
+
                 e.stopPropagation();
 
                 const v1 = prev.clone(),
                   v2 = point.clone();
 
-                const AB = new THREE.Vector3().subVectors(v2, v1);
-                const AP = new THREE.Vector3().subVectors(e.point, v1);
+                const ab = new THREE.Vector3().subVectors(v2, v1);
+                const ap = new THREE.Vector3().subVectors(e.point, v1);
 
-                // Calculate the projection scalar t
-                let t = AP.dot(AB) / AB.lengthSq();
+                // calculate the projection scalar t
+                let t = ap.dot(ab) / ab.lengthSq();
 
-                // Clamp t to ensure the snapped point is within the segment
+                // clamp t to ensure the snapped point is within the segment
                 t = Math.max(0, Math.min(1, t));
 
-                // Calculate the snapped point
-                const closestPoint = new THREE.Vector3().copy(v1).add(AB.multiplyScalar(t));
+                // calculate the snapped point
+                const closestPoint = new THREE.Vector3().copy(v1).add(ab.multiplyScalar(t));
                 setPreview([closestPoint, i]);
               }}
               onPointerOut={e => {
@@ -101,6 +116,7 @@ export default function Plane(props: Props) {
               }}
             >
               <boxGeometry args={[0.5, length - 1, 0.5]} />
+              <meshStandardMaterial color={edgeColor} />
             </mesh>
             {preview?.[1] === i ? (
               <Point
@@ -165,14 +181,10 @@ function Point(props: PointProps) {
 
   const displayLabels = useAtomValue(labels);
 
-  const [, setHover] = useState(false);
-
   return (
     <>
       <mesh
         {...rest}
-        onPointerOver={() => setHover(true)}
-        onPointerOut={() => setHover(false)}
         onPointerDown={e => {
           if (!onPointerDown) return;
 
@@ -191,6 +203,7 @@ function Point(props: PointProps) {
           const x = (e.x / width) * 2 - 1,
             y = -(e.y / height) * 2 + 1;
 
+          // cast the coordinates to a plane perpendicular to the y axis
           const intersection = castToYPlane(camera, new THREE.Vector2(x, y), rest.position.y);
           if (intersection) onPointerMove(e, intersection);
         }}

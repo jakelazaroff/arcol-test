@@ -135,11 +135,13 @@ export default function Debug() {
       ctx.stroke();
     }
 
+    // draw triangles
     if (settings.triangles) {
       if (settings.shape_1) drawTris(ctx, p1, triangulate(ceiling), "black");
       if (settings.shape_2) drawTris(ctx, p2, triangulate(floor), "black");
     }
 
+    // draw rays
     if (settings.rays) {
       ctx.lineWidth = 2;
       ctx.strokeStyle = "orange";
@@ -152,10 +154,14 @@ export default function Debug() {
     }
 
     if (settings.connections) {
+      // draw all connections, including ones that cross the rays
       drawConnections(ctx, connections2, pL, pS, "magenta");
+
+      // draw connections, excluding ones that cross the rays
       drawConnections(ctx, connections, pL, pS, "lime");
     }
 
+    // draw shape outlines
     if (settings.outlines) {
       if (settings.shape_1) drawShape(ctx, p1, "red");
       if (settings.shape_2) drawShape(ctx, p2, "blue");

@@ -13,6 +13,7 @@ export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; in
     p2 = end.map<Vector3Tuple>(v => [v.x, v.y, v.z]);
 
   // 2) Map nonplanar paths to an appropriate plane
+  // TODO
 
   // 3) Perform linear transformations to make the current pair of planar paths coplanar
   transformToZ0(p1);
@@ -37,6 +38,7 @@ export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; in
   }
 
   // 7) Scale pL to completely encompass pS
+  // skipped — only necessary as a visulization aid
 
   // 8) Generate rays from the origin that extend through the edge midpoints of pS
   const rays = raycast(pS);
@@ -45,8 +47,10 @@ export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; in
   const connections = connectVerts(pL, pS, rays);
 
   // 10) Find appropriate connections for unconnected vertices in pL if they exist
+  // TODO
 
   // 11) Find appropriate connections for unconnected vertices in pS if they exist
+  // TODO
 
   // 12) Make the final connections that cross each of the rays
   connectAcrossRays(connections);
@@ -70,27 +74,27 @@ export function transformToZ0(path: Vector3Tuple[]): void {
   vec3.normalize(normal, normal);
 
   // calculate rotation to align the normal with the z-axis
-  const targetNormal = vec3.fromValues(0, 0, 1);
-  const rotationAxis = vec3.create();
-  vec3.cross(rotationAxis, normal, targetNormal);
+  const target = vec3.fromValues(0, 0, 1);
+  const axis = vec3.create();
+  vec3.cross(axis, normal, target);
 
-  const angle = Math.acos(vec3.dot(normal, targetNormal));
+  const angle = Math.acos(vec3.dot(normal, target));
 
   // if the path is already cpplanar with z = 0, zero out the z component and return
-  if (vec3.length(rotationAxis) === 0) {
+  if (vec3.length(axis) === 0) {
     for (const v of path) v[2] = 0;
     return;
   }
 
   // create rotation matrix and rotate all vertices
-  const rotationMatrix = mat4.create();
+  const rotation = mat4.create();
 
-  vec3.normalize(rotationAxis, rotationAxis);
-  mat4.fromRotation(rotationMatrix, angle, rotationAxis);
+  vec3.normalize(axis, axis);
+  mat4.fromRotation(rotation, angle, axis);
 
   for (const v of path) {
     const rotated = vec3.create();
-    vec3.transformMat4(rotated, vec3.fromValues(...v), rotationMatrix);
+    vec3.transformMat4(rotated, vec3.fromValues(...v), rotation);
     v[0] = rotated[0];
     v[1] = rotated[1];
     v[2] = 0; // set z to 0 after rotation
@@ -198,6 +202,7 @@ export function connectAcrossRays(matrix: boolean[][]) {
     if (above + below + left + right === 2) continue;
 
     // get the next connected cell
+    // TODO: choose vertices that will result in a convex polygon
     const [_nextRow, nextCol] = connections[(i + 1) % connections.length];
     // mark a connection in the next column
     matrix[row][nextCol] = true;
@@ -256,6 +261,8 @@ export function generateTris(pL: Vector3Tuple[], pS: Vector3Tuple[], matrix: boo
 }
 
 const TWO_PI = Math.PI * 2;
+
+/** Normalize a radian angle into the range [0, 2pi] */
 export function normalize(angle: number) {
   const clamped = angle % TWO_PI, // normalize into range [-2pi, 2pi]
     positive = clamped + TWO_PI, // translate into range [0, 4pi]
@@ -264,9 +271,14 @@ export function normalize(angle: number) {
   return result;
 }
 
-export function between(n1: number, nb: number, n2: number) {
-  if (nb === n1 || nb === n2) return true;
+/** Return whether a number `n` is between two numbers `min` and `max`, wrapping around 0. */
+export function between(min: number, n: number, max: number) {
+  // if n is equal to min or max, return true
+  if (n === min || n === max) return true;
 
-  if (n1 < n2) return n1 < nb && nb < n2;
-  return n1 < nb || nb < n2;
+  // if min is less than max, the comparison is easy: just check whether n is between them
+  if (min < max) return min < n && n < max;
+
+  // if min is *greater* than max, check that n does *not* fall between them
+  return min < n || n < max;
 }
