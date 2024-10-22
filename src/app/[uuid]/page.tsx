@@ -9,9 +9,9 @@ import { ErrorBoundary } from "react-error-boundary";
 import type * as THREE from "three";
 import type * as Y from "yjs";
 
-import Cap from "~/components/Cap";
-import Loft from "~/components/Loft";
-import Plane from "~/components/Plane";
+import Cap from "~/component/Cap";
+import Loft from "~/component/Loft";
+import Plane from "~/component/Plane";
 import gui, { caps, grid, stats, wireframe } from "~/lib/settings";
 import { store } from "~/lib/settings";
 import { toVector3, toYMap } from "~/lib/yjs";

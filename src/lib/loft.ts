@@ -6,8 +6,6 @@ export type Vector3 = { x: number; y: number; z: number };
 type Vector3Tuple = [x: number, y: number, z: number];
 
 export function loft(start: Vector3[], end: Vector3[]): { vertices: number[]; indices: number[] } {
-  // https://micsymposium.org/mics2018/proceedings/MICS_2018_paper_65.pdf
-
   // 1) Make copies of the paths to manipulate in 3D space
   const p1 = start.map<Vector3Tuple>(v => [v.x, v.y, v.z]),
     p2 = end.map<Vector3Tuple>(v => [v.x, v.y, v.z]);
